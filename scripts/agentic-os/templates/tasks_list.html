@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Tasks <span id="runtime-badge" class="badge" aria-live="polite">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="queue-heading">
+      <header>
+        <h2 id="queue-heading">Queue
+          <span id="orphan-count" class="badge" hidden></span>
+        </h2>
+        <div class="row-flex">
+          <button id="prune-orphans-btn" type="button" hidden>Prune missing</button>
+          <a class="btn" href="/tasks/new">+ New task</a>
+        </div>
+      </header>
+      <p id="prune-msg" class="msg muted" hidden></p>
+
+      <!-- Issue #198 — filter/search/group controls.
+           View toggle switches between the dense table (default) and a
+           lanes view (Needs action / Running / Blocked / Failed / Done). -->
+      <div class="queue-controls" role="group" aria-label="Queue filters">
+        <input id="queue-search" type="search"
+               placeholder="Search id, title, spec…" aria-label="Search tasks">
+        <select id="queue-filter-status" aria-label="Status filter">
+          <option value="">all statuses</option>
+          <option value="queued">queued</option>
+          <option value="analyzing">analyzing</option>
+          <option value="planning">planning</option>
+          <option value="reviewing">reviewing</option>
+          <option value="running">running</option>
+          <option value="done">done</option>
+          <option value="blocked">blocked</option>
+          <option value="failed">failed</option>
+        </select>
+        <select id="queue-filter-priority" aria-label="Priority filter">
+          <option value="">all priorities</option>
+          <option value="P0">P0</option>
+          <option value="P1">P1</option>
+          <option value="P2">P2</option>
+          <option value="P3">P3</option>
+        </select>
+        <select id="queue-view-mode" aria-label="View mode">
+          <option value="table">table</option>
+          <option value="lanes">lanes</option>
+        </select>
+      </div>
+
+      <div id="queue-table-view" class="card scroll-x">
+        <table id="work-items">
+          <thead>
+            <tr>
+              <th scope="col" data-sort="id">id</th>
+              <th scope="col" data-sort="status">status</th>
+              <th scope="col" data-sort="priority">priority</th>
+              <th scope="col" data-sort="title">title</th>
+              <th scope="col">spec</th>
+              <th scope="col">last artifact</th>
+              <th scope="col" data-sort="created_at">created</th>
+              <th scope="col">actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="queue-lanes-view" class="queue-lanes" hidden></div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.startTasksListPolling();
+</script>
+</body>
+</html>

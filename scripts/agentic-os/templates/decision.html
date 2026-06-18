@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Decision - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body class="detail-shell">
+  <header class="topbar" role="banner">
+    <h1>Decision / blocker <code id="dec-id">?</code></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <p class="note">Read-only view. Decisions are recorded by orchestrator and human checkpoints.
+       Phase 05 dashboard does not write decisions back.</p>
+    <dl class="meta" id="meta"></dl>
+    <h2>Context</h2>
+    <pre id="ctx"></pre>
+    <h2>Resolution</h2>
+    <pre id="res"></pre>
+  </main>
+<script>
+function row(dl, k, v) {
+  const dt = document.createElement('dt'); dt.textContent = k;
+  const dd = document.createElement('dd'); dd.textContent = v == null ? '' : String(v);
+  dl.appendChild(dt); dl.appendChild(dd);
+}
+async function load() {
+  const id = location.pathname.split('/').pop();
+  document.getElementById('dec-id').textContent = id;
+  try {
+    const r = await fetch('/api/decision/' + encodeURIComponent(id));
+    if (!r.ok) throw new Error('status ' + r.status);
+    const j = await r.json();
+    const dl = document.getElementById('meta');
+    ['phase_id','severity','source','status','opened_at','resolved_at','description']
+      .forEach(k => row(dl, k, j.blocker[k]));
+    document.getElementById('ctx').textContent =
+      j.blocker.context ? JSON.stringify(j.blocker.context, null, 2) : '(none)';
+    document.getElementById('res').textContent =
+      j.blocker.resolution ? JSON.stringify(j.blocker.resolution, null, 2) : '(none)';
+  } catch (e) {
+    document.getElementById('ctx').textContent = 'error: ' + e.message;
+  }
+}
+load();
+</script>
+</body>
+</html>

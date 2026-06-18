@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Agents - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Agents <span id="runtime-badge" class="badge">…</span>
+      <span id="full-auto-indicator" class="full-auto-indicator" data-state="off" aria-live="polite">
+        <span class="full-auto-dot" aria-hidden="true"></span>Full Dashboard-Auto Mode
+      </span>
+    </h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="agents-heading">
+      <header>
+        <h2 id="agents-heading">Configured roles</h2>
+        <p id="agents-write-status" class="muted">Checking write gate…</p>
+        <button id="agents-reload" type="button" class="btn-small">Reload agents</button>
+      </header>
+      <div id="agents-grid" class="agents-grid">
+        <p class="placeholder">(loading…)</p>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.startFullAutoIndicator && AgenticOS.startFullAutoIndicator();
+  AgenticOS.startAgentsPolling && AgenticOS.startAgentsPolling();
+</script>
+</body>
+</html>

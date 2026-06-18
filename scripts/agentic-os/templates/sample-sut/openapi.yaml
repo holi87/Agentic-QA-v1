@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Sample SUT API
+  version: "0.1.0"
+  description: |
+    Minimal OpenAPI shipped with `agentic-os init --sample-sut`. Points
+    at the httpbin image the compose template spins up so the API
+    generator has real GET endpoints to probe without external setup.
+
+servers:
+  - url: http://localhost:8081
+
+paths:
+  /get:
+    get:
+      operationId: getEcho
+      summary: Echo the query string back as JSON.
+      responses:
+        "200":
+          description: JSON body containing url, headers, and args.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  args:
+                    type: object
+
+  /headers:
+    get:
+      operationId: getHeaders
+      summary: Return the request headers as JSON.
+      responses:
+        "200":
+          description: JSON body with the headers field.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers:
+                    type: object
+
+  /status/{code}:
+    get:
+      operationId: getStatus
+      summary: Return an arbitrary HTTP status code.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK status path (chosen by the operator).

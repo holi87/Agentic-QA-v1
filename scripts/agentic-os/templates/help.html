@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Help - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Help <span id="runtime-badge" class="badge" aria-live="polite">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="support-bundle-heading">
+      <header><h2 id="support-bundle-heading">Support bundle</h2></header>
+      <div class="card support-bundle-card">
+        <p class="msg muted small">
+          Builds a tarball under
+          <code>agentic-os-runtime/support-bundles/</code> containing a
+          redacted copy of your config, <code>doctor --sut --models --docker</code>
+          output, the tail of recent events, the last run's artifacts, and any
+          bug notes on disk. Useful when filing an issue or asking for help.
+        </p>
+        <p class="msg warn" role="note">
+          <strong>Review the bundle before sending.</strong> Config secrets are
+          redacted by a conservative leaf-key denylist
+          (<code>api_key</code>, <code>token</code>, <code>password</code>, …),
+          but other operator data (events, run artifacts, bug notes) is included
+          verbatim. The denylist is conservative, not exhaustive.
+        </p>
+        <div class="form-actions row-flex">
+          <button id="support-bundle-build-btn" type="button" disabled>
+            Build support bundle
+          </button>
+        </div>
+        <p id="support-bundle-msg" class="msg muted" aria-live="polite"></p>
+        <ul id="support-bundle-results" class="autonomy-log"></ul>
+      </div>
+    </section>
+
+    <section class="card help-doc" id="help-doc">
+      <p class="msg muted" id="help-loading">Loading help…</p>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.renderHelpDoc();
+  AgenticOS.wireSupportBundle && AgenticOS.wireSupportBundle();
+</script>
+</body>
+</html>

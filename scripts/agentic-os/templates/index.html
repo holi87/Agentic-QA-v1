@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Agentic OS — dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Agentic OS operator dashboard — analyze, plan, generate, review, run, and final-gate Agentic web testing workflows on a QualityCat-style QA output layer.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Agentic OS
+      <span id="runtime-badge" class="badge" aria-live="polite">…</span>
+      <span id="full-auto-indicator" class="full-auto-indicator" data-state="off" aria-live="polite">
+        <span class="full-auto-dot" aria-hidden="true"></span>Full Dashboard-Auto Mode
+      </span>
+    </h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <!-- Issues #193/#196/#197/#199/#201 — monitoring cockpit.
+         The dashboard is now operations-first: readiness, current process,
+         next action, and latest run sit above the workflow controls. -->
+    <section class="cockpit" aria-labelledby="cockpit-heading">
+      <header>
+        <h2 id="cockpit-heading">Cockpit</h2>
+        <span class="muted small" id="cockpit-status" aria-live="polite">live</span>
+      </header>
+      <div class="cockpit-grid">
+        <article class="cockpit-card cockpit-preflight" data-state="loading"
+                 aria-labelledby="preflight-heading">
+          <header class="cockpit-card-header">
+            <h3 id="preflight-heading">Readiness</h3>
+            <span class="status-pill" id="preflight-overall" data-state="loading">…</span>
+          </header>
+          <ul id="preflight-checks" class="preflight-list">
+            <li class="placeholder">checking…</li>
+          </ul>
+        </article>
+
+        <article class="cockpit-card cockpit-process" data-state="idle"
+                 aria-labelledby="process-heading">
+          <header class="cockpit-card-header">
+            <h3 id="process-heading">Current process</h3>
+            <span class="status-pill" id="process-pill" data-state="idle">idle</span>
+          </header>
+          <div id="process-body">
+            <p class="muted small">No action running. Start one from a task page.</p>
+          </div>
+        </article>
+
+        <article class="cockpit-card cockpit-next" aria-labelledby="next-action-heading">
+          <header class="cockpit-card-header">
+            <h3 id="next-action-heading">Next action</h3>
+            <span class="status-pill" id="next-pill" data-state="idle">queue</span>
+          </header>
+          <div id="next-action-body">
+            <p class="muted small">No pending work — queue is clear.</p>
+          </div>
+        </article>
+
+        <article class="cockpit-card cockpit-run" data-state="loading"
+                 aria-labelledby="run-summary-heading">
+          <header class="cockpit-card-header">
+            <h3 id="run-summary-heading">Latest run</h3>
+            <span class="status-pill" id="run-verdict" data-state="loading">…</span>
+          </header>
+          <div id="run-summary-body">
+            <p class="muted small">loading…</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="cockpit-metrics" role="group" aria-label="Cockpit metrics">
+        <div class="metric metric-planned">
+          <div class="metric-label">Planned candidates</div>
+          <div class="metric-value" id="m-planned">–</div>
+          <div class="metric-sub" id="m-planned-sub">approved · pending · not testable</div>
+        </div>
+        <div class="metric metric-generated">
+          <div class="metric-label">Generated tests</div>
+          <div class="metric-value" id="m-generated">–</div>
+          <div class="metric-sub" id="m-generated-sub">api · ui · other</div>
+        </div>
+        <div class="metric metric-runs">
+          <div class="metric-label">Recent runs</div>
+          <div class="metric-value" id="m-runs">–</div>
+          <div class="metric-sub" id="m-runs-sub">green · product · infra</div>
+        </div>
+        <div class="metric metric-budget">
+          <div class="metric-label">AI budget</div>
+          <div class="metric-value" id="m-budget">–</div>
+          <div class="metric-sub" id="m-budget-sub">tokens · cost</div>
+        </div>
+        <div class="metric metric-debt">
+          <div class="metric-label">Candidate debt</div>
+          <div class="metric-value" id="m-debt">–</div>
+          <div class="metric-sub" id="m-debt-sub">decisions awaiting operator</div>
+        </div>
+      </div>
+
+      <div class="cockpit-charts" id="cockpit-charts">
+        <figure class="chart-card" aria-labelledby="chart-history-heading">
+          <figcaption id="chart-history-heading">Run history (last 30)</figcaption>
+          <div id="chart-history" class="chart-canvas" role="img"
+               aria-label="Stacked bars of recent runs by outcome">
+            <svg viewBox="0 0 320 80" preserveAspectRatio="none"
+                 xmlns="http://www.w3.org/2000/svg"><text x="10" y="40" font-size="11" fill="currentColor">no run history yet</text></svg>
+          </div>
+        </figure>
+        <figure class="chart-card" aria-labelledby="chart-funnel-heading">
+          <figcaption id="chart-funnel-heading">Funnel</figcaption>
+          <div id="chart-funnel" class="chart-canvas" role="img"
+               aria-label="Planned → approved → generated → run funnel">
+            <svg viewBox="0 0 320 80" preserveAspectRatio="none"
+                 xmlns="http://www.w3.org/2000/svg"><text x="10" y="40" font-size="11" fill="currentColor">no candidates yet</text></svg>
+          </div>
+        </figure>
+        <figure class="chart-card" aria-labelledby="chart-trend-heading">
+          <figcaption id="chart-trend-heading">Failure mix</figcaption>
+          <div id="chart-trend" class="chart-canvas" role="img"
+               aria-label="Failure kind distribution">
+            <svg viewBox="0 0 320 80" preserveAspectRatio="none"
+                 xmlns="http://www.w3.org/2000/svg"><text x="10" y="40" font-size="11" fill="currentColor">no runs yet</text></svg>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="active-task-heading">
+      <header>
+        <h2 id="active-task-heading">Active task</h2>
+        <a class="btn-link" href="/tasks">All tasks →</a>
+      </header>
+      <div class="hero">
+        <div class="card" id="active-task-card">
+          <div class="label">Working on</div>
+          <h3 id="active-task-title"><span class="skeleton" aria-hidden="true"></span></h3>
+          <dl class="hero-meta">
+            <dt>id</dt><dd id="active-task-id">–</dd>
+            <dt>status</dt><dd id="active-task-status">–</dd>
+            <dt>priority</dt><dd id="active-task-priority">–</dd>
+            <dt>last artifact</dt><dd id="active-task-last">–</dd>
+          </dl>
+          <div class="next-action" id="active-task-next">
+            <span class="muted">no tasks yet — create one to begin</span>
+          </div>
+        </div>
+        <div class="card">
+          <!-- Issue #191 — this card shows the operator work-item queue
+               (`/api/status.work_items`), not the internal scheduler `tasks`
+               table. Relabelled so operators no longer read it as a runtime
+               health stat. -->
+          <div class="label">Work items</div>
+          <div class="grid grid-2">
+            <div>
+              <div class="label">Queued</div>
+              <div class="big" id="t-queued">–</div>
+            </div>
+            <div>
+              <div class="label">Running</div>
+              <div class="big" id="t-running">–</div>
+            </div>
+            <div>
+              <div class="label">Failed</div>
+              <div class="big" id="t-failed">–</div>
+            </div>
+            <div>
+              <div class="label">Blockers</div>
+              <div class="big" id="bl-open">–</div>
+            </div>
+            <div>
+              <div class="label">Bugs open</div>
+              <div class="big" id="b-open">–</div>
+            </div>
+            <div>
+              <div class="label">Bugs known</div>
+              <div class="big" id="b-known">–</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="autonomy-heading">
+      <header>
+        <h2 id="autonomy-heading">Full Autonomy <span class="muted" id="autonomy-state">idle</span>
+          <a class="help-tip" href="/help#full-autonomy-primer"
+             title="What full autonomy unlocks and when to use it" aria-label="help">?</a>
+        </h2>
+      </header>
+      <div class="card autonomy-card">
+        <p class="muted small">
+          Set a max time budget and the OS runs analyze → plan → generate → run
+          for every pending work-item without prompting. Min 60 minutes recommended
+          (anything under will warn). Some lifecycle actions may require sudo —
+          if so, restart the dashboard with elevated privileges.
+        </p>
+        <div class="autonomy-controls">
+          <label>max minutes
+            <input id="autonomy-minutes" type="number" min="15" max="720" value="60" />
+          </label>
+          <button id="autonomy-start-btn" type="button">Start full autonomy</button>
+          <button id="autonomy-pause-btn" type="button" disabled>Pause</button>
+          <button id="autonomy-resume-btn" type="button" disabled hidden>Resume</button>
+          <button id="autonomy-stop-btn" type="button" disabled>Stop</button>
+          <span id="autonomy-timer" class="muted"></span>
+          <button id="autonomy-blocked-chip" type="button" class="autonomy-chip blocked-chip"
+                  hidden aria-label="blocked work items"></button>
+        </div>
+        <div id="autonomy-warning" class="autonomy-warning" hidden></div>
+        <div id="autonomy-awaiting" class="autonomy-awaiting" role="status" hidden></div>
+        <div id="autonomy-budget" class="autonomy-budget" hidden aria-label="budget consumption"></div>
+        <div id="autonomy-providers" class="autonomy-providers" hidden aria-label="provider failover"></div>
+        <div id="autonomy-coverage" class="autonomy-coverage" hidden aria-label="coverage floor"></div>
+        <div id="autonomy-sparklines" class="autonomy-sparklines" hidden aria-label="per-role activity"></div>
+        <ul id="autonomy-log" class="autonomy-log"></ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="sut-mode-heading">
+      <header>
+        <h2 id="sut-mode-heading">SUT mode</h2>
+      </header>
+      <div class="card sut-mode-card">
+        <div class="sut-mode-row">
+          <label><input type="radio" name="sut-mode" value="local" id="sut-mode-local" /> local (docker compose)</label>
+          <label><input type="radio" name="sut-mode" value="online" id="sut-mode-online" /> online (existing URL)</label>
+        </div>
+        <div class="sut-mode-endpoints">
+          <fieldset>
+            <legend>Web (UI)</legend>
+            <label><input type="checkbox" id="sut-web-enabled" /> enabled (generate UI specs)</label>
+            <label>URL <input type="url" id="sut-web-url" placeholder="http://127.0.0.1:3000" /></label>
+          </fieldset>
+          <fieldset>
+            <legend>API</legend>
+            <label><input type="checkbox" id="sut-api-enabled" /> enabled (generate API specs)</label>
+            <label>URL <input type="url" id="sut-api-url" placeholder="http://127.0.0.1:3000/api" /></label>
+          </fieldset>
+        </div>
+        <div class="sut-mode-actions">
+          <button id="sut-mode-save" type="button">Save SUT mode</button>
+          <span id="sut-mode-status" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="config-heading">
+      <header>
+        <h2 id="config-heading">SUT context <span class="muted" id="config-source">read-only</span></h2>
+      </header>
+      <div class="card sut-card sut-card-v2">
+        <div class="sut-grid">
+          <div class="sut-block">
+            <h3 class="sut-block-title">Core</h3>
+            <dl class="meta">
+              <dt>config</dt><dd id="cfg-source">…</dd>
+              <dt>kind</dt><dd id="cfg-sut-kind">…</dd>
+              <dt>sut.root</dt><dd id="cfg-sut-root">…</dd>
+              <dt>tests_dir</dt><dd id="cfg-tests-dir">…</dd>
+              <dt>compose_file</dt><dd id="cfg-compose">…</dd>
+              <dt>test_runner</dt><dd id="cfg-test-runner">…</dd>
+              <dt>healthcheck</dt><dd id="cfg-healthcheck">…</dd>
+            </dl>
+          </div>
+          <div class="sut-block">
+            <h3 class="sut-block-title">URLs</h3>
+            <dl class="meta">
+              <dt>base_url</dt><dd id="cfg-base-url" class="url-pill">…</dd>
+              <dt>api_base_url</dt><dd id="cfg-api-base-url" class="url-pill">…</dd>
+              <dt>ui_url</dt><dd id="cfg-ui-url" class="url-pill">…</dd>
+            </dl>
+            <h3 class="sut-block-title">Runners</h3>
+            <dl class="meta">
+              <dt>api</dt><dd id="cfg-runner-api" class="runner-chip">…</dd>
+              <dt>ui</dt><dd id="cfg-runner-ui" class="runner-chip">…</dd>
+            </dl>
+          </div>
+          <div class="sut-block">
+            <h3 class="sut-block-title">Sources</h3>
+            <dl class="meta">
+              <dt>openapi</dt><dd><ul id="cfg-openapi-sources" class="source-list"></ul></dd>
+              <dt>docs</dt><dd><ul id="cfg-docs-sources" class="source-list"></ul></dd>
+              <dt>credentials</dt><dd id="cfg-credentials" class="creds-chip">…</dd>
+            </dl>
+          </div>
+          <div class="sut-block">
+            <h3 class="sut-block-title">Dashboard</h3>
+            <dl class="meta">
+              <dt>host</dt><dd id="cfg-dashboard-host">…</dd>
+              <dt>writes</dt><dd id="cfg-write-gate" class="write-chip">…</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Issue #241 — declarative git: integration card -->
+    <section aria-labelledby="git-integration-heading">
+      <header>
+        <h2 id="git-integration-heading">Git integration
+          <span class="muted" id="git-int-mode">…</span>
+        </h2>
+      </header>
+      <div class="card git-int-card">
+        <dl class="meta git-int-meta">
+          <dt>state</dt><dd id="git-int-state">…</dd>
+          <dt>initialized</dt><dd id="git-int-initialized">…</dd>
+          <dt>remote</dt><dd id="git-int-remote">…</dd>
+          <dt>head</dt><dd id="git-int-head">…</dd>
+          <dt>last fetch</dt><dd id="git-int-last-fetch">…</dd>
+        </dl>
+        <div class="git-int-actions">
+          <button id="git-int-ensure" type="button" disabled>Run `git ensure`</button>
+          <span id="git-int-status" class="muted"></span>
+        </div>
+        <details class="git-int-ops"><summary>last ops</summary>
+          <pre id="git-int-ops-body">(no run yet)</pre>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="suggestions-heading">
+      <header><h2 id="suggestions-heading">Suggested next steps</h2></header>
+      <div class="card suggestions-card">
+        <ul id="suggestions-list" class="suggestions-list">
+          <li class="placeholder">(no suggestions — start by creating a task)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="patches-heading">
+      <header><h2 id="patches-heading">Patch resolution <span class="muted">live</span></h2></header>
+      <div class="card patches-card">
+        <div id="patches-summary" class="patches-summary">
+          <span class="chip chip-waiting">waiting <b id="ps-waiting">0</b></span>
+          <span class="chip chip-rejected">rejected <b id="ps-rejected">0</b></span>
+          <span class="chip chip-abandoned">abandoned <b id="ps-abandoned">0</b></span>
+          <span class="chip chip-approved">approved <b id="ps-approved">0</b></span>
+        </div>
+        <div class="scroll-x">
+          <table id="patches-table">
+            <thead><tr><th>task</th><th>patch</th><th>state</th><th>created</th></tr></thead>
+            <tbody><tr><td colspan="4" class="placeholder">(no patches yet)</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="leases-heading">
+      <header><h2 id="leases-heading">Active leases</h2></header>
+      <div class="card scroll-x">
+        <table id="leases">
+          <thead><tr><th>owner</th><th>pid</th><th>host</th><th>expires</th></tr></thead>
+          <tbody><tr><td colspan="4" class="placeholder">(loading leases)</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Issue #197 — Last run renders as an operator summary, not raw JSON.
+         The structured card lives here; the raw payload is preserved as a
+         collapsible <details> for auditors who want the unfiltered view. -->
+    <section id="section-reports" aria-labelledby="reports-heading">
+      <header><h2 id="reports-heading">Last run</h2></header>
+      <div class="card run-report-card">
+        <div id="last-run-summary" class="run-report-summary">
+          <div class="run-report-row run-report-status">
+            <span class="status-pill" id="last-run-verdict" data-state="loading">…</span>
+            <span class="run-report-meta" id="last-run-meta">loading…</span>
+          </div>
+          <dl class="run-report-counts" id="last-run-counts" aria-label="Test result counts">
+            <div class="run-count run-count-total"><dt>total</dt><dd id="lr-total">loading</dd></div>
+            <div class="run-count run-count-passed"><dt>passed</dt><dd id="lr-passed">loading</dd></div>
+            <div class="run-count run-count-failed"><dt>failed</dt><dd id="lr-failed">loading</dd></div>
+            <div class="run-count run-count-skipped"><dt>skipped</dt><dd id="lr-skipped">loading</dd></div>
+            <div class="run-count run-count-known"><dt>known-bug</dt><dd id="lr-known-bug">loading</dd></div>
+          </dl>
+          <div id="last-run-failures" class="run-report-failures" hidden>
+            <h3>Failures</h3>
+            <ul id="last-run-failures-list"></ul>
+          </div>
+        </div>
+        <details class="run-report-raw">
+          <summary>Raw payload</summary>
+          <pre id="last-run" class="block">(loading…)</pre>
+        </details>
+      </div>
+    </section>
+
+    <section id="section-events" aria-labelledby="events-heading">
+      <header>
+        <h2 id="events-heading">Recent events <span class="muted" id="ev-mode">(polling)</span></h2>
+      </header>
+      <div id="events" class="events" role="log" aria-live="polite"></div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.loadConfig();
+  AgenticOS.startEvents();
+  AgenticOS.startActiveTaskPolling();
+  AgenticOS.startPatchPolling && AgenticOS.startPatchPolling();
+  AgenticOS.startSuggestionsPolling && AgenticOS.startSuggestionsPolling();
+  AgenticOS.startFullAutoIndicator && AgenticOS.startFullAutoIndicator();
+  AgenticOS.wireSutMode && AgenticOS.wireSutMode();
+  AgenticOS.wireGitIntegration && AgenticOS.wireGitIntegration();
+  AgenticOS.wireFullAutonomy && AgenticOS.wireFullAutonomy();
+  AgenticOS.startCockpitPolling && AgenticOS.startCockpitPolling();
+</script>
+</body>
+</html>

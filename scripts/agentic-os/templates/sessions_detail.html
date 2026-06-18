@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Session replay - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Session replay <span id="runtime-badge" class="badge">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="session-summary-heading">
+      <header><h2 id="session-summary-heading">Summary
+        <a class="nav-link" href="/sessions">← all sessions</a>
+      </h2></header>
+      <div class="card">
+        <dl class="meta" id="session-summary"></dl>
+        <div class="session-bookmark">
+          <label>bookmark
+            <input id="session-bookmark-input" type="text" placeholder="e.g. regression-2026-05-26" />
+          </label>
+          <button id="session-bookmark-save" type="button">Save</button>
+          <span id="session-bookmark-status" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="session-replay-heading">
+      <header><h2 id="session-replay-heading">Replay</h2></header>
+      <div class="card">
+        <div class="replay-controls">
+          <input id="replay-scrubber" type="range" min="0" max="100" value="100" />
+          <span id="replay-position" class="muted">end</span>
+          <button id="replay-jump-blocker" type="button" class="btn-small">Jump to next blocker</button>
+          <button id="replay-jump-failure" type="button" class="btn-small">Jump to first failure</button>
+        </div>
+        <ol id="replay-timeline" class="step-timeline">
+          <li class="placeholder">(loading events…)</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script src="/static/sessions.js"></script>
+<script>
+  AgenticOS.startRuntimePolling && AgenticOS.startRuntimePolling();
+  Sessions.startDetail();
+</script>
+</body>
+</html>

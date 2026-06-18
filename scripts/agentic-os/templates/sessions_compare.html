@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Compare sessions - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Compare sessions <span id="runtime-badge" class="badge">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="compare-heading">
+      <header><h2 id="compare-heading">Side-by-side
+        <a class="nav-link" href="/sessions">← all sessions</a>
+      </h2></header>
+      <div class="card scroll-x">
+        <table id="compare-table">
+          <thead><tr><th>metric</th><th id="compare-a-head">A</th><th id="compare-b-head">B</th><th>Δ</th></tr></thead>
+          <tbody><tr><td colspan="4" class="placeholder">(loading…)</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script src="/static/sessions.js"></script>
+<script>
+  AgenticOS.startRuntimePolling && AgenticOS.startRuntimePolling();
+  Sessions.startCompare();
+</script>
+</body>
+</html>

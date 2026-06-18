@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Verifications - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Verifications <span id="runtime-badge" class="badge">…</span>
+      <span id="full-auto-indicator" class="full-auto-indicator" data-state="off" aria-live="polite">
+        <span class="full-auto-dot" aria-hidden="true"></span>Full Dashboard-Auto Mode
+      </span>
+    </h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <!-- 3. Verification queue -->
+    <section aria-labelledby="verif-queue-heading">
+      <header><h2 id="verif-queue-heading">Verification queue <span class="muted">refreshes every 5s</span></h2></header>
+      <div class="card scroll-x">
+        <table id="verif-queue">
+          <thead><tr><th>work item</th><th>pending</th><th>role</th><th>ETA (p50)</th></tr></thead>
+          <tbody><tr><td colspan="4" class="placeholder">(nothing pending)</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="verif-grid">
+      <!-- 1. Per-work-item verification timeline -->
+      <section aria-labelledby="verif-timeline-heading">
+        <header><h2 id="verif-timeline-heading">Reviewer / triager timeline</h2></header>
+        <div class="card">
+          <ol id="verif-timeline" class="step-timeline">
+            <li class="placeholder">(waiting for reviewer / triager events)</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 2. Live decision log -->
+      <section aria-labelledby="verif-decisions-heading">
+        <header><h2 id="verif-decisions-heading">Decision log
+          <select id="verif-decision-filter" aria-label="Filter decisions by actor">
+            <option value="">all actors</option>
+            <option value="*-autopilot">autonomous only</option>
+            <option value="operator">operator only</option>
+          </select>
+        </h2></header>
+        <div class="card">
+          <ul id="verif-decisions" class="decision-log">
+            <li class="placeholder">(no decisions yet)</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Operator override drawer -->
+  <aside id="verif-drawer" class="step-drawer" hidden aria-label="Decision override">
+    <header class="step-drawer-head">
+      <strong>Override decision</strong>
+      <button id="verif-drawer-close" type="button" class="btn-small">Close</button>
+    </header>
+    <dl class="meta" id="verif-drawer-meta"></dl>
+    <label class="verif-override-label">Action
+      <select id="verif-override-action">
+        <option value="reject-verdict">Reject verdict</option>
+        <option value="override-severity">Override severity</option>
+        <option value="add-note">Add note</option>
+      </select>
+    </label>
+    <label class="verif-override-label">Note
+      <textarea id="verif-override-note" rows="4" placeholder="why are you overriding?"></textarea>
+    </label>
+    <div class="verif-override-actions">
+      <button id="verif-override-submit" type="button" disabled>Submit override</button>
+      <span id="verif-override-status" class="muted"></span>
+    </div>
+  </aside>
+
+<script src="/static/dashboard.js"></script>
+<script src="/static/verifications.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.startFullAutoIndicator && AgenticOS.startFullAutoIndicator();
+  Verifications.start();
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Learnings - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Learnings <span id="runtime-badge" class="badge">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="learnings-heading">
+      <header><h2 id="learnings-heading">Cross-run learnings</h2></header>
+      <p class="muted">
+        Advisory hints distilled from history (issue #273). Gates still decide;
+        weight decays nightly. Use “Forget” to override a stale hint.
+      </p>
+      <div class="card">
+        <div class="learnings-filters">
+          <label>kind
+            <select id="learnings-filter-kind">
+              <option value="">all</option>
+              <option value="flaky">flaky</option>
+              <option value="skill_failure">skill_failure</option>
+              <option value="provider_quality">provider_quality</option>
+              <option value="coverage_gap">coverage_gap</option>
+            </select>
+          </label>
+        </div>
+        <div class="scroll-x">
+          <table id="learnings-table">
+            <thead><tr>
+              <th>id</th><th>kind</th><th>weight</th><th>observed</th>
+              <th>subject</th><th></th>
+            </tr></thead>
+            <tbody><tr><td colspan="6" class="placeholder">(loading…)</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  (function () {
+    var tbody = document.querySelector("#learnings-table tbody");
+    var kindSel = document.getElementById("learnings-filter-kind");
+
+    function clear(node) {
+      while (node.firstChild) node.removeChild(node.firstChild);
+    }
+
+    function placeholderRow(text) {
+      var tr = document.createElement("tr");
+      var td = document.createElement("td");
+      td.colSpan = 6;
+      td.className = "placeholder";
+      td.textContent = text;
+      tr.appendChild(td);
+      return tr;
+    }
+
+    function fmtWeight(w) {
+      var n = Number(w);
+      return Number.isFinite(n) ? n.toFixed(3) : String(w);
+    }
+
+    function render(rows) {
+      clear(tbody);
+      if (!rows.length) {
+        tbody.appendChild(placeholderRow("(no learnings)"));
+        return;
+      }
+      rows.forEach(function (r) {
+        var tr = document.createElement("tr");
+        var cells = [r.id, r.kind, fmtWeight(r.weight), r.observed_at, r.subject];
+        cells.forEach(function (v) {
+          var td = document.createElement("td");
+          td.textContent = v == null ? "" : String(v);
+          tr.appendChild(td);
+        });
+        var actionTd = document.createElement("td");
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Forget";
+        btn.addEventListener("click", function () {
+          if (!window.confirm("Forget learning #" + r.id + "?")) return;
+          fetch("/api/learnings/" + encodeURIComponent(r.id) + "/forget", {
+            method: "POST",
+          }).then(function () { load(); });
+        });
+        actionTd.appendChild(btn);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function load() {
+      var kind = kindSel.value;
+      var url = "/api/learnings" + (kind ? "?kind=" + encodeURIComponent(kind) : "");
+      fetch(url)
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) { render((data && data.learnings) || []); })
+        .catch(function () { render([]); });
+    }
+
+    kindSel.addEventListener("change", load);
+    AgenticOS.startRuntimePolling && AgenticOS.startRuntimePolling();
+    load();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sessions - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Sessions <span id="runtime-badge" class="badge">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="sessions-heading">
+      <header><h2 id="sessions-heading">Past autonomy sessions</h2></header>
+      <div class="card">
+        <div class="sessions-filters">
+          <label>mode
+            <select id="sessions-filter-mode">
+              <option value="">all</option>
+              <option value="loop">loop</option>
+              <option value="exploratory">exploratory</option>
+              <option value="dry-run">dry-run</option>
+            </select>
+          </label>
+          <label>status
+            <select id="sessions-filter-status">
+              <option value="">all</option>
+              <option value="running">running</option>
+              <option value="paused">paused</option>
+              <option value="finished">finished</option>
+              <option value="stopped">stopped</option>
+              <option value="failed">failed</option>
+            </select>
+          </label>
+        </div>
+        <div class="scroll-x">
+          <table id="sessions-table">
+            <thead><tr>
+              <th>session</th><th>started</th><th>duration</th><th>mode</th>
+              <th>work items</th><th>blocks</th><th>failures</th><th>status</th>
+            </tr></thead>
+            <tbody><tr><td colspan="8" class="placeholder">(loading…)</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sessions-pager">
+          <button id="sessions-prev" type="button" disabled>← newer</button>
+          <span id="sessions-page" class="muted">page 1</span>
+          <button id="sessions-next" type="button">older →</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script src="/static/sessions.js"></script>
+<script>
+  AgenticOS.startRuntimePolling && AgenticOS.startRuntimePolling();
+  Sessions.startList();
+</script>
+</body>
+</html>

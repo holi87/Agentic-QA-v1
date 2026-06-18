@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>New task - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>New task <span id="runtime-badge" class="badge" aria-live="polite">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section>
+      <div class="card form-card">
+        <p id="write-gate-warning" class="msg muted">Checking write gate…</p>
+        <form id="task-form">
+          <label>Title
+            <input name="title" required maxlength="160"
+                   placeholder="Order negative validation">
+          </label>
+          <label>Priority
+            <select name="priority">
+              <option>P0</option>
+              <option>P1</option>
+              <option selected>P2</option>
+              <option>P3</option>
+            </select>
+          </label>
+          <label>SUT root (optional override)
+            <input name="sut_root" maxlength="300" placeholder=".">
+          </label>
+          <label>Business goal
+            <textarea name="business_goal"
+                      placeholder="Validate customer-visible ordering behavior"></textarea>
+          </label>
+          <label>Expected behavior
+            <textarea name="expected_behavior"
+                      placeholder="Invalid order data is rejected with precise errors"></textarea>
+          </label>
+          <label>In scope
+            <textarea name="in_scope"
+                      placeholder="API validation; error shape; exact-spec evidence"></textarea>
+          </label>
+          <label>Out of scope
+            <textarea name="out_of_scope" placeholder="Payment sandbox; UI redesign"></textarea>
+          </label>
+          <label>Known bugs
+            <textarea name="known_bugs" placeholder="BUG-001 returns 500 instead of 422"></textarea>
+          </label>
+          <label>Relevant endpoints or pages
+            <textarea name="relevant_surfaces" placeholder="POST /orders, /checkout"></textarea>
+          </label>
+          <label>Test data and credentials constraints
+            <textarea name="test_data"
+                      placeholder="Local non-production test data only"></textarea>
+          </label>
+          <label>Time budget
+            <textarea name="time_budget" placeholder="60 minutes"></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="submit" id="task-submit">Create task</button>
+            <a class="btn-link" href="/tasks">Cancel</a>
+          </div>
+          <div id="task-msg" class="msg muted"></div>
+        </form>
+      </div>
+    </section>
+
+    <section aria-labelledby="inbox-heading">
+      <header>
+        <h2 id="inbox-heading">Upload task document</h2>
+      </header>
+      <div class="card">
+        <p class="muted small">
+          Drop a Markdown, plain-text, DOCX or PDF document and the OS will parse it
+          into a task spec under <code>agentic-os-runtime/task-specs/</code>. Files placed
+          in <code>./inbox/</code> or <code>./pretask/</code> on disk are picked up by
+          the same pipeline.
+        </p>
+        <label>Bundle title
+          <input id="inbox-synthesize-title" maxlength="160"
+                 placeholder="Quality blog exploratory brief">
+        </label>
+        <div class="form-actions row-flex">
+          <input id="inbox-file" type="file"
+                 accept=".md,.markdown,.txt,.docx,.pdf">
+          <button id="inbox-upload-btn" type="button">Upload</button>
+          <button id="inbox-ingest-btn" type="button">Ingest pending</button>
+          <button id="inbox-synthesize-btn" type="button">Create task from pending</button>
+        </div>
+        <p id="inbox-msg" class="msg muted"></p>
+        <ul id="inbox-pending-list" class="autonomy-log"></ul>
+        <ul id="inbox-results-list" class="autonomy-log"></ul>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.wireTaskForm();
+  AgenticOS.wireInbox();
+</script>
+</body>
+</html>

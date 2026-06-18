@@ -1,0 +1,12 @@
+claude:
+  input_per_1k_usd: 0.0
+  output_per_1k_usd: 0.0
+codex:
+  input_per_1k_usd: 0.0
+  output_per_1k_usd: 0.0
+antigravity:
+  input_per_1k_usd: 0.0
+  output_per_1k_usd: 0.0
+script:
+  input_per_1k_usd: 0.0
+  output_per_1k_usd: 0.0

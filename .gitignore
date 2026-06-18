@@ -1,0 +1,79 @@
+.DS_Store
+
+# Local source/reference backups from previous Agentic OS attempts.
+bck/
+
+# Source planning/checkpoint artifacts kept local and intentionally not versioned.
+AGENTIC_OS_CHECKPOINTS.html
+AGENTIC_OS_IMPLEMENTATION_PLAN.md
+agentic_os_checkpoints.html
+agentic_os_implementation_plan.md
+
+# Agentic OS runtime state.
+agentic-os-runtime/
+.agentic-os/
+reports/
+bugs/
+evidence/
+build/
+!docs/evidence/
+
+# Inbox runtime: dropped documents + archive/failed dirs (the OS materializes
+# them into agentic-os-runtime/task-specs/ via `agentic-os inbox ingest`
+# or one synthesized task via `agentic-os inbox synthesize`).
+inbox/*
+!inbox/.gitkeep
+!inbox/README.md
+pretask/*
+!pretask/.gitkeep
+!pretask/README.md
+
+# Docker volume contract (#354): host input/ (ro) + output/ (rw) bind-mount
+# targets. The OS fills output/{reports,bugs,evidence} at runtime; only the
+# scaffolding is tracked. See docs/docker-volume-contract.md.
+input/*
+!input/.gitkeep
+!input/README.md
+# Track the output bind-source subdirs themselves (not their runtime contents)
+# so they exist on a fresh checkout: the documented `chown -R 10001:10001
+# output` then covers them, and Docker Compose does not create them root-owned
+# (Compose short-syntax binds create missing host dirs as root → the non-root
+# uid 10001 container could not write artifacts).
+output/*
+!output/.gitkeep
+!output/README.md
+!output/reports/
+!output/bugs/
+!output/evidence/
+output/reports/*
+output/bugs/*
+output/evidence/*
+!output/reports/.gitkeep
+!output/bugs/.gitkeep
+!output/evidence/.gitkeep
+
+# Operator's live config, generated from .qualitycat/agentic-os.yml.example by init.
+.qualitycat/agentic-os.yml
+.qualitycat/*.bak.*
+
+# Local secrets/config.
+.env
+.env.*
+!.env.example
+
+# Language/tool caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+node_modules/
+.cache/
+
+# Logs and temporary files.
+*.log
+*.tmp
+tmp/
+
+# Playwright MCP scratch dir (snapshots/console logs from screenshot captures).
+.playwright-mcp/
+scripts/.antigravitycli/

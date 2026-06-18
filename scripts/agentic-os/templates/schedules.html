@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Schedules - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Schedules <span id="runtime-badge" class="badge">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="sched-list-heading">
+      <header><h2 id="sched-list-heading">Cron schedules <span class="muted">issue #271</span></h2></header>
+      <div class="card scroll-x">
+        <table id="sched-table">
+          <thead>
+            <tr>
+              <th>name</th><th>enabled</th><th>cron</th><th>next fire (ETA)</th>
+              <th>last run</th><th>last status</th><th>action</th><th>controls</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="8" class="placeholder">(loading…)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="sched-add-heading">
+      <header><h2 id="sched-add-heading">Add / edit schedule</h2></header>
+      <div class="card">
+        <form id="sched-form">
+          <label>Name <input id="sched-name" name="name" required></label>
+          <label>Cron <input id="sched-cron" name="cron" placeholder="0 2 * * *" required></label>
+          <label>Action <input id="sched-action" name="action" placeholder="autonomy start --exploratory --max-minutes 60" required></label>
+          <label><input id="sched-enabled" name="enabled" type="checkbox" checked> Enabled</label>
+          <button type="submit">Save schedule</button>
+          <span id="sched-status" class="muted"></span>
+        </form>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  (function () {
+    var statusEl = document.getElementById("sched-status");
+    function setStatus(msg) { if (statusEl) statusEl.textContent = msg || ""; }
+
+    function cell(text) {
+      var td = document.createElement("td");
+      td.textContent = text;
+      return td;
+    }
+
+    function render(rows, writeEnabled) {
+      var tbody = document.querySelector("#sched-table tbody");
+      tbody.textContent = "";
+      if (!rows || rows.length === 0) {
+        var tr0 = document.createElement("tr");
+        var td0 = document.createElement("td");
+        td0.colSpan = 8;
+        td0.className = "placeholder";
+        td0.textContent = "(no schedules)";
+        tr0.appendChild(td0);
+        tbody.appendChild(tr0);
+        return;
+      }
+      rows.forEach(function (s) {
+        var tr = document.createElement("tr");
+        tr.appendChild(cell(s.name));
+        tr.appendChild(cell(s.enabled ? "on" : "off"));
+        tr.appendChild(cell(s.cron_valid ? s.cron : (s.cron + " (invalid)")));
+        tr.appendChild(cell(s.next_fire || "-"));
+        tr.appendChild(cell(s.last_run || "-"));
+        tr.appendChild(cell(s.last_status || "-"));
+        tr.appendChild(cell(s.action));
+        var controls = document.createElement("td");
+        if (writeEnabled) {
+          controls.appendChild(mkBtn(s.enabled ? "Disable" : "Enable",
+            "/api/schedules/" + encodeURIComponent(s.name) + (s.enabled ? "/disable" : "/enable")));
+          controls.appendChild(mkBtn("Run now",
+            "/api/schedules/" + encodeURIComponent(s.name) + "/run-now"));
+          controls.appendChild(mkDelete(s.name));
+        } else {
+          controls.textContent = "(read-only)";
+        }
+        tr.appendChild(controls);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function mkBtn(label, url) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn-small";
+      b.textContent = label;
+      b.addEventListener("click", function () {
+        post(url, null, function () { load(); });
+      });
+      return b;
+    }
+
+    function mkDelete(name) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn-small";
+      b.textContent = "Delete";
+      b.addEventListener("click", function () {
+        fetch("/api/schedules/" + encodeURIComponent(name), { method: "DELETE" })
+          .then(function () { load(); });
+      });
+      return b;
+    }
+
+    function post(url, body, cb) {
+      setStatus("working…");
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : null
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          setStatus(res.ok ? "ok" : (res.j.message || res.j.error || "error"));
+          if (cb) cb(res);
+        })
+        .catch(function (e) { setStatus(String(e)); });
+    }
+
+    function load() {
+      fetch("/api/schedules").then(function (r) { return r.json(); })
+        .then(function (j) { render(j.schedules || [], !!j.write_enabled); })
+        .catch(function (e) { setStatus(String(e)); });
+    }
+
+    var form = document.getElementById("sched-form");
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      post("/api/schedules", {
+        name: document.getElementById("sched-name").value,
+        cron: document.getElementById("sched-cron").value,
+        action: document.getElementById("sched-action").value,
+        enabled: document.getElementById("sched-enabled").checked
+      }, function (res) { if (res.ok) load(); });
+    });
+
+    if (window.AgenticOS && AgenticOS.startRuntimePolling) AgenticOS.startRuntimePolling();
+    load();
+  })();
+</script>
+</body>
+</html>

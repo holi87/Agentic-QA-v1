@@ -1,0 +1,127 @@
+runtime:
+  root: agentic-os-runtime
+  timezone: Europe/Warsaw
+  # Global ceiling on concurrent agents across all roles (issue #361). Fan-out
+  # multiplies model calls, so this also protects provider rate limits.
+  max_parallel_tasks: 4
+  # Optional per-role override of the global cap. A role not listed here
+  # inherits max_parallel_tasks. Bounds fan-out per agent kind (#359/#360).
+  max_parallel_per_role:
+    planner: 2
+    implementer: 4
+    triage: 4
+  heartbeat_seconds: 20
+  lease_ttl_seconds: 60
+  stale_lease_seconds: 90
+  shutdown_grace_seconds: 5
+  timeouts:
+    default_seconds: 1800
+    docker_seconds: 240
+    test_seconds: 3600
+    model_seconds: 1800
+    report_seconds: 300
+
+sut:
+  root: .
+  # mode: local — uses docker-compose; mode: online — uses web.url / api.url
+  mode: local
+  compose_file: docker-compose.yml
+  compose_project_name: agentic-os-sut
+  autostart: true
+  healthcheck:
+    command: ["curl", "-fsS", "http://127.0.0.1:3000/health"]
+    timeout_seconds: 30
+    retries: 10
+  test_runner: ./run-tests.sh
+  install_shim_allowed: false
+  # Endpoint declaration — gates test generation:
+  # if web.enabled=false the implementer skips UI specs; same for api.
+  web:
+    enabled: true
+    url: http://127.0.0.1:3000
+  api:
+    enabled: true
+    url: http://127.0.0.1:3000/api
+
+models:
+  # Issue #236 — Claude primary for every role (cheap variant per role),
+  # codex stays as reviewer primary, antigravity (`agy`) is the last
+  # fallback slot for every role. Failover behaviour from issue #235.
+  # Base commands run in full-auto / no-prompt permission mode.
+  planner:
+    provider: claude
+    command: ["claude", "--dangerously-skip-permissions", "--model", "opus"]
+    role: opus
+    fallback:
+      - { provider: codex, command: ["codex", "--sandbox", "danger-full-access", "--ask-for-approval", "never"], role: codex }
+      - { provider: antigravity, command: ["agy", "--dangerously-skip-permissions"], role: gemini }
+  implementer:
+    provider: claude
+    command: ["claude", "--dangerously-skip-permissions", "--model", "sonnet"]
+    role: sonnet
+    fallback:
+      - { provider: codex, command: ["codex", "--sandbox", "danger-full-access", "--ask-for-approval", "never"], role: codex }
+      - { provider: antigravity, command: ["agy", "--dangerously-skip-permissions"], role: gemini }
+  reviewer:
+    provider: codex
+    command: ["codex", "--sandbox", "danger-full-access", "--ask-for-approval", "never"]
+    role: codex
+    fallback:
+      - { provider: claude, command: ["claude", "--dangerously-skip-permissions", "--model", "sonnet"], role: sonnet }
+      - { provider: antigravity, command: ["agy", "--dangerously-skip-permissions"], role: gemini }
+  triager:
+    provider: claude
+    command: ["claude", "--dangerously-skip-permissions", "--model", "haiku"]
+    role: haiku
+    auto_fire: true
+    fallback:
+      - { provider: codex, command: ["codex", "--sandbox", "danger-full-access", "--ask-for-approval", "never"], role: codex }
+      - { provider: antigravity, command: ["agy", "--dangerously-skip-permissions"], role: gemini }
+
+budgets:
+  session:
+    max_tokens: 1000000
+    max_usd: 50.0
+  per_role:
+    planner: {max_tokens: 200000}
+    implementer: {max_tokens: 500000}
+    reviewer: {max_tokens: 150000}
+    triager: {max_tokens: 150000}
+  per_work_item:
+    max_tokens: 300000
+  fail_mode: abort
+
+# Issue #245 — step.* event taxonomy throttle for subprocess stdout sampling.
+events:
+  step_progress_throttle: 5
+
+# Phase 3 autonomy flags — all default false; flip on per the issue gating.
+autonomy:
+  coverage_floor: false
+  coverage_architect: false
+  triage_batch: false
+
+dashboard:
+  host: 127.0.0.1
+  port: 8765
+  enable_write_endpoints: false
+
+paths:
+  reports: reports
+  bugs: bugs
+  evidence: evidence
+  prompts: config/prompts
+
+reports:
+  copy_reports_script: scripts/copy-reports.sh
+  extract_last_run_script: scripts/extract-last-run.sh
+  build_summary_script: scripts/build-summary.sh
+  require_reports_on_failure: true
+
+gates:
+  known_bugs_fail_exit: true
+  assertion_changes_require_decision: true
+  exact_spec_failure_opens_bug: true
+  require_functional_area_tag: true
+  require_lifecycle_tag: true
+  infrastructure_exit_code: 2

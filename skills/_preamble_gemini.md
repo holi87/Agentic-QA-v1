@@ -1,0 +1,5 @@
+- Runtime: Gemini / Antigravity workspace, model `gemini-3.1-pro-high`.
+- Output is JSON-friendly: structured sections, no decorative prose.
+- Quote errors verbatim. Cite `file:line` on every finding.
+- English only. Bullet lists + tables; avoid free-form paragraphs.
+- Fan-out only independent slices: fan-out → synthesize/dedup barrier → one artifact. No shared mutable state. Never parallelize review/final gates or DB (WAL) writes. See AGENTS.md § "Parallel agent orchestration".

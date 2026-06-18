@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-os"
+version = "0.1.0"
+description = "Agentic OS — agentic web testing orchestrator for QualityCat"
+requires-python = ">=3.13"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Quality Cat", email = "grzegorz@qualitycat.pl" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+]
+browser = [
+    "pytest-playwright",
+    "Pillow",
+]
+
+[project.urls]
+"Source" = "https://github.com/holi87/agentic-web-testing"
+"Issues" = "https://github.com/holi87/agentic-web-testing/issues"
+
+[tool.setuptools.packages.find]
+where = ["scripts/agentic-os"]
+include = ["agentic_os*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# CI needs repo root on sys.path so `from tests.test_dashboard_task_ui`
+# imports work without `tests/__init__.py` (which would conflict with
+# pytest's test discovery rootdir heuristics).
+pythonpath = [".", "scripts/agentic-os"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "browser: opt-in Playwright-driven dashboard regression (requires `pip install pytest-playwright` + `playwright install chromium`)",
+]
+# Default invocation skips the browser group so a host without the
+# Playwright bundle stays green. Run `pytest -m browser` to opt in.
+addopts = "-m 'not browser'"

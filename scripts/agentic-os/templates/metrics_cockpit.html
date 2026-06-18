@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Metrics cockpit - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Metrics cockpit
+      <span class="muted">snapshot <span id="metrics-stale" class="metric-stale">…</span></span>
+    </h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="overview-heading">
+      <header><h2 id="overview-heading">Overview</h2></header>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <h3>Work items</h3>
+          <div class="metric-big" id="m-work-items">–</div>
+          <div id="m-work-items-status" class="muted"></div>
+        </div>
+        <div class="metric-card">
+          <h3>Run outcomes (recent)</h3>
+          <div id="m-outcomes"><span class="metric-empty">no runs</span></div>
+        </div>
+        <div class="metric-card">
+          <h3>Patches applied</h3>
+          <div class="metric-big" id="m-patches">–</div>
+        </div>
+        <div class="metric-card">
+          <h3>Sessions</h3>
+          <div id="m-sessions"><span class="metric-empty">no sessions</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="coverage-heading">
+      <header><h2 id="coverage-heading">Coverage ledger</h2></header>
+      <div class="metric-card">
+        <div class="metric-row">
+          <span>Total rows</span>
+          <strong id="m-coverage-total">0</strong>
+        </div>
+        <div id="m-coverage-by-kind"></div>
+        <details>
+          <summary>By project</summary>
+          <ul id="m-coverage-projects" class="artifact-list"></ul>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="cost-heading">
+      <header><h2 id="cost-heading">Cost &amp; tokens</h2></header>
+      <div class="metric-card">
+        <div class="metric-row">
+          <span>Total cost (USD)</span>
+          <strong id="m-cost-total">$0.00</strong>
+        </div>
+        <div class="metric-row">
+          <span>Tokens in</span>
+          <code id="m-tokens-in">0</code>
+        </div>
+        <div class="metric-row">
+          <span>Tokens out</span>
+          <code id="m-tokens-out">0</code>
+        </div>
+        <div class="metric-row">
+          <span>Invocations</span>
+          <code id="m-invocations">0</code>
+        </div>
+        <details>
+          <summary>By provider</summary>
+          <ul id="m-cost-providers" class="artifact-list"></ul>
+        </details>
+        <details>
+          <summary>By role</summary>
+          <ul id="m-cost-roles" class="artifact-list"></ul>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="providers-heading">
+      <header><h2 id="providers-heading">Providers &amp; failover</h2></header>
+      <div class="metric-card">
+        <div class="metric-row">
+          <span>Failover events (approx.)</span>
+          <code id="m-failover">0</code>
+        </div>
+        <details>
+          <summary>Active cooldowns</summary>
+          <ul id="m-cooldowns" class="artifact-list"></ul>
+        </details>
+        <details>
+          <summary>Provider × role outcomes</summary>
+          <ul id="m-provider-outcomes" class="artifact-list"></ul>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="blocks-heading">
+      <header><h2 id="blocks-heading">Blocks</h2></header>
+      <div class="metric-card">
+        <div class="metric-row">
+          <span>Total block events</span>
+          <strong id="m-blocks-total">0</strong>
+        </div>
+        <ul id="m-block-reasons" class="artifact-list"></ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="phase-heading">
+      <header><h2 id="phase-heading">Phase timing</h2></header>
+      <div class="metric-card">
+        <table>
+          <thead><tr><th>kind</th><th>runs</th><th>avg ms</th><th>min ms</th><th>max ms</th></tr></thead>
+          <tbody id="m-phase-rows">
+            <tr><td colspan="5" class="metric-empty">no runs</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="export-heading">
+      <header><h2 id="export-heading">External export</h2></header>
+      <div class="metric-card">
+        <p class="muted">
+          A Prometheus-compatible exposition is served at
+          <a href="/metrics"><code>/metrics</code></a>. Sample scrape config:
+        </p>
+        <pre><code>scrape_configs:
+  - job_name: agentic-os
+    static_configs:
+      - targets: ['127.0.0.1:8765']</code></pre>
+        <p class="muted">
+          The raw JSON rollup is at
+          <a href="/api/metrics"><code>/api/metrics</code></a>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+<script>
+(function () {
+  // Issue #314 / security: NEVER use innerHTML on user/DB-sourced strings.
+  // All field values flow through textContent / createElement so the
+  // metrics rollup cannot become an XSS surface (project_id, model_role,
+  // cooldown trigger strings are operator-supplied via config).
+  function fmt(n) {
+    if (typeof n !== 'number') return String(n || 0);
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+    return String(n);
+  }
+  function fmtMoney(n) {
+    return '$' + (Number(n || 0)).toFixed(4);
+  }
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = String(value);
+  }
+  function clear(id) {
+    var el = document.getElementById(id);
+    if (el) while (el.firstChild) el.removeChild(el.firstChild);
+  }
+  function makeRow(label, value) {
+    var row = document.createElement('div');
+    row.className = 'metric-row';
+    var span = document.createElement('span');
+    span.textContent = String(label);
+    var code = document.createElement('code');
+    code.textContent = String(value);
+    row.appendChild(span);
+    row.appendChild(code);
+    return row;
+  }
+  function liCode(text) {
+    var li = document.createElement('li');
+    var code = document.createElement('code');
+    code.textContent = String(text);
+    li.appendChild(code);
+    return li;
+  }
+  function emptySpan(text) {
+    var s = document.createElement('span');
+    s.className = 'metric-empty';
+    s.textContent = String(text);
+    return s;
+  }
+  function emptyRow(colspan, text) {
+    var tr = document.createElement('tr');
+    var td = document.createElement('td');
+    td.colSpan = colspan;
+    td.className = 'metric-empty';
+    td.textContent = String(text);
+    tr.appendChild(td);
+    return tr;
+  }
+  function render(m) {
+    setText('metrics-stale', m.generated_at || '?');
+    var tests = m.tests || {};
+    setText('m-work-items', fmt(tests.work_items_total || 0));
+    var byStatus = tests.work_items_by_status || {};
+    var statusEl = document.getElementById('m-work-items-status');
+    if (statusEl) {
+      statusEl.textContent = Object.keys(byStatus).length
+        ? Object.keys(byStatus).map(function(k){return k+':'+byStatus[k];}).join(' · ')
+        : '(no items)';
+    }
+    setText('m-patches', fmt(tests.patches_applied || 0));
+    var outcomesEl = document.getElementById('m-outcomes');
+    if (outcomesEl) {
+      clear('m-outcomes');
+      var outcomes = tests.outcomes || {};
+      var keys = Object.keys(outcomes);
+      if (!keys.length) {
+        outcomesEl.appendChild(emptySpan('no runs'));
+      } else {
+        keys.forEach(function(k){
+          outcomesEl.appendChild(makeRow(k, outcomes[k]));
+        });
+      }
+    }
+
+    var sessions = (m.sessions && m.sessions.totals) || {};
+    var sessEl = document.getElementById('m-sessions');
+    if (sessEl) {
+      clear('m-sessions');
+      if (!sessions.sessions) {
+        sessEl.appendChild(emptySpan('no sessions'));
+      } else {
+        ['sessions', 'blocks', 'failures', 'work_items_processed'].forEach(function(k){
+          sessEl.appendChild(makeRow(k, sessions[k] || 0));
+        });
+      }
+    }
+
+    var cov = m.coverage || {};
+    setText('m-coverage-total', fmt(cov.total_rows || 0));
+    clear('m-coverage-by-kind');
+    var covByKind = cov.by_surface_kind || {};
+    var ckEl = document.getElementById('m-coverage-by-kind');
+    if (ckEl) {
+      Object.keys(covByKind).forEach(function(k){
+        ckEl.appendChild(makeRow(k, covByKind[k]));
+      });
+    }
+    clear('m-coverage-projects');
+    var projEl = document.getElementById('m-coverage-projects');
+    (cov.by_project || []).forEach(function(p){
+      // counts is a plain {kind: n} dict — render via JSON.stringify so
+      // the keys are visible without us hand-rolling a serializer.
+      projEl.appendChild(liCode(String(p.project_id) + ' — ' + JSON.stringify(p.counts || {})));
+    });
+
+    var cost = m.cost || {};
+    var totals = cost.totals || {};
+    document.getElementById('m-cost-total').textContent = fmtMoney(totals.cost_usd);
+    setText('m-tokens-in', fmt(totals.tokens_in || 0));
+    setText('m-tokens-out', fmt(totals.tokens_out || 0));
+    setText('m-invocations', fmt(totals.invocations || 0));
+    clear('m-cost-providers');
+    (cost.by_provider || []).forEach(function(p){
+      document.getElementById('m-cost-providers').appendChild(
+        liCode(String(p.provider) + ' — ' + (p.n || 0) + ' calls · ' + fmtMoney(p.cost_usd))
+      );
+    });
+    clear('m-cost-roles');
+    (cost.by_role || []).forEach(function(p){
+      document.getElementById('m-cost-roles').appendChild(
+        liCode((p.model_role || '?') + ' — ' + (p.n || 0) + ' calls · ' + fmtMoney(p.cost_usd))
+      );
+    });
+
+    var providers = m.providers || {};
+    setText('m-failover', String(providers.failover_events || 0));
+    clear('m-cooldowns');
+    (providers.active_cooldowns || []).forEach(function(c){
+      document.getElementById('m-cooldowns').appendChild(
+        liCode(String(c.role) + '/' + String(c.provider) + ' until ' + String(c.cooldown_until)
+               + ' (' + String(c.trigger) + ')')
+      );
+    });
+    clear('m-provider-outcomes');
+    (providers.by_provider_outcomes || []).forEach(function(r){
+      document.getElementById('m-provider-outcomes').appendChild(
+        liCode(String(r.provider) + '×' + String(r.model_role)
+               + ' n=' + (r.n || 0) + ' ok=' + (r.ok || 0) + ' bad=' + (r.bad || 0))
+      );
+    });
+
+    var blocks = m.blocks || {};
+    setText('m-blocks-total', String(blocks.total_blocks || 0));
+    clear('m-block-reasons');
+    (blocks.by_reason || []).forEach(function(b){
+      document.getElementById('m-block-reasons').appendChild(
+        liCode(String(b.kind) + ' — ' + (b.n || 0))
+      );
+    });
+
+    var phase = m.phase_timing || {};
+    var phaseEl = document.getElementById('m-phase-rows');
+    while (phaseEl.firstChild) phaseEl.removeChild(phaseEl.firstChild);
+    var rows = phase.by_kind || [];
+    if (!rows.length) {
+      phaseEl.appendChild(emptyRow(5, 'no runs'));
+    } else {
+      rows.forEach(function(r){
+        var tr = document.createElement('tr');
+        [
+          r.kind || '?',
+          r.n || 0,
+          (r.avg_ms || 0).toFixed ? (r.avg_ms || 0).toFixed(0) : (r.avg_ms || 0),
+          r.min_ms || 0,
+          r.max_ms || 0,
+        ].forEach(function(cell){
+          var td = document.createElement('td');
+          td.textContent = String(cell);
+          tr.appendChild(td);
+        });
+        phaseEl.appendChild(tr);
+      });
+    }
+  }
+  function poll() {
+    fetch('/api/metrics', {headers: {Accept: 'application/json'}})
+      .then(function(r){ return r.ok ? r.json() : {}; })
+      .then(render)
+      .catch(function(){ /* silent — next poll retries */ });
+  }
+  poll();
+  setInterval(poll, 5000);
+})();
+</script>
+</body>
+</html>

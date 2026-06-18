@@ -1,0 +1,109 @@
+# Skills configuration
+#
+# Operator chooses which skills are active per agent role. Skill ID =
+# relative path from skills/ without the .md extension
+# (e.g. claude/qc-claude-planner-analyze-task).
+#
+# The runtime resolves the provider for each role from
+# `config/agentic-os.yml > models.<role>.provider` and loads skills
+# only from `skills/<provider>/`. Skills not in the active provider
+# directory are ignored silently — operator can pre-enable all
+# providers and the runtime picks the right set automatically.
+#
+# Edit this file directly or use the dashboard `/skills` page.
+
+version: "1.0"
+
+skills:
+  scope: project              # project | global | both
+  global_dir: ~/agentic-os-skills
+  project_dir: skills
+
+  per_role:
+    planner:
+      enabled:
+        - claude/qc-claude-planner-analyze-task
+        - claude/qc-claude-planner-explore-sut
+        - claude/qc-claude-planner-design-features
+        - claude/qc-claude-planner-coverage-architect
+        - codex/qc-codex-planner-analyze-task
+        - codex/qc-codex-planner-explore-sut
+        - codex/qc-codex-planner-design-features
+        - codex/qc-codex-planner-coverage-architect
+        - gemini/qc-gemini-planner-analyze-task
+        - gemini/qc-gemini-planner-explore-sut
+        - gemini/qc-gemini-planner-design-features
+        - gemini/qc-gemini-planner-coverage-architect
+        - claude/qc-claude-recover-from-quota
+        - codex/qc-codex-recover-from-quota
+        - gemini/qc-gemini-recover-from-quota
+      disabled: []
+
+    implementer:
+      enabled:
+        - claude/qc-claude-implementer-implement-api
+        - claude/qc-claude-implementer-implement-ui
+        - claude/qc-claude-implementer-init-project
+        - claude/qc-claude-implementer-package
+        - claude/qc-claude-implementer-verify
+        - codex/qc-codex-implementer-implement-api
+        - codex/qc-codex-implementer-implement-ui
+        - codex/qc-codex-implementer-init-project
+        - codex/qc-codex-implementer-package
+        - codex/qc-codex-implementer-verify
+        - gemini/qc-gemini-implementer-implement-api
+        - gemini/qc-gemini-implementer-implement-ui
+        - gemini/qc-gemini-implementer-init-project
+        - gemini/qc-gemini-implementer-package
+        - gemini/qc-gemini-implementer-verify
+        - claude/qc-claude-implementer-handle-flaky
+        - codex/qc-codex-implementer-handle-flaky
+        - gemini/qc-gemini-implementer-handle-flaky
+        - claude/qc-claude-recover-from-quota
+        - codex/qc-codex-recover-from-quota
+        - gemini/qc-gemini-recover-from-quota
+      disabled: []
+
+    reviewer:
+      enabled:
+        - codex/qc-codex-reviewer-validate-features
+        - codex/qc-codex-reviewer-validate-tests
+        - codex/qc-codex-reviewer-validate-security
+        - codex/qc-codex-reviewer-final-gate
+        - claude/qc-claude-reviewer-validate-features
+        - claude/qc-claude-reviewer-validate-tests
+        - claude/qc-claude-reviewer-validate-security
+        - claude/qc-claude-reviewer-final-gate
+        - gemini/qc-gemini-reviewer-validate-features
+        - gemini/qc-gemini-reviewer-validate-tests
+        - gemini/qc-gemini-reviewer-validate-security
+        - gemini/qc-gemini-reviewer-final-gate
+        - claude/qc-claude-reviewer-validate-architecture
+        - codex/qc-codex-reviewer-validate-architecture
+        - gemini/qc-gemini-reviewer-validate-architecture
+        - claude/qc-claude-recover-from-quota
+        - codex/qc-codex-recover-from-quota
+        - gemini/qc-gemini-recover-from-quota
+      disabled: []
+
+    triager:
+      enabled:
+        - gemini/qc-gemini-triager-first-check
+        - gemini/qc-gemini-triager-severity-priority
+        - gemini/qc-gemini-triager-refine-bug
+        - claude/qc-claude-triager-first-check
+        - claude/qc-claude-triager-severity-priority
+        - claude/qc-claude-triager-refine-bug
+        - codex/qc-codex-triager-first-check
+        - codex/qc-codex-triager-severity-priority
+        - codex/qc-codex-triager-refine-bug
+        - claude/qc-claude-triager-link-duplicates
+        - codex/qc-codex-triager-link-duplicates
+        - gemini/qc-gemini-triager-link-duplicates
+        - claude/qc-claude-triager-escalate-blocker
+        - codex/qc-codex-triager-escalate-blocker
+        - gemini/qc-gemini-triager-escalate-blocker
+        - claude/qc-claude-recover-from-quota
+        - codex/qc-codex-recover-from-quota
+        - gemini/qc-gemini-recover-from-quota
+      disabled: []

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Task - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body class="detail-shell">
+  <header class="topbar" role="banner">
+    <h1>Task <code id="task-id">?</code></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <dl class="meta" id="meta"></dl>
+    <h2>Payload</h2>
+    <pre id="payload"></pre>
+    <h2>Runs</h2>
+    <pre id="runs"></pre>
+  </main>
+<script>
+const TS_FIELDS = new Set(['lease_expires','created_at','started_at','finished_at']);
+function fmtLocalTs(value) {
+  if (value == null || value === '') return '';
+  const d = new Date(String(value));
+  if (isNaN(d.getTime())) return String(value);
+  const pad = n => n < 10 ? '0' + n : '' + n;
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+function row(dl, k, v) {
+  const dt = document.createElement('dt'); dt.textContent = k;
+  const dd = document.createElement('dd');
+  dd.textContent = TS_FIELDS.has(k) ? fmtLocalTs(v) : (v == null ? '' : String(v));
+  dl.appendChild(dt); dl.appendChild(dd);
+}
+async function load() {
+  const id = location.pathname.split('/').pop();
+  document.getElementById('task-id').textContent = id;
+  try {
+    const r = await fetch('/api/task/' + encodeURIComponent(id));
+    if (!r.ok) throw new Error('status ' + r.status);
+    const j = await r.json();
+    const dl = document.getElementById('meta');
+    ['phase_id','kind','status','lease_owner','lease_expires',
+     'created_at','started_at','finished_at','exit_code','error_class']
+      .forEach(k => row(dl, k, j.task[k]));
+    document.getElementById('payload').textContent = JSON.stringify(j.task.payload, null, 2);
+    document.getElementById('runs').textContent = JSON.stringify(j.runs, null, 2);
+  } catch (e) {
+    document.getElementById('payload').textContent = 'error: ' + e.message;
+  }
+}
+load();
+</script>
+</body>
+</html>

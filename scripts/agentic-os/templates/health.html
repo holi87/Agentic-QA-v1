@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Health - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Health <span id="runtime-badge" class="badge">…</span></h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="health-heading">
+      <header>
+        <h2 id="health-heading">Runtime repair scan <span class="muted">issue #274</span></h2>
+        <p class="muted">
+          Dry-run scan for runtime drift. SAFE repairs (stale lease, orphan spec)
+          can be applied here; HARD repairs require <code>doctor --repair --yes</code>.
+        </p>
+      </header>
+      <div class="card">
+        <p>
+          <span id="health-summary" class="muted">(loading…)</span>
+        </p>
+        <p>
+          <button id="health-rescan" type="button" class="btn-small">Rescan</button>
+          <button id="health-apply-safe" type="button" class="btn-small">Apply safe repairs</button>
+          <button id="health-apply-all" type="button" class="btn-small">Apply all repairs</button>
+          <span id="health-status" class="muted"></span>
+        </p>
+      </div>
+      <div class="card scroll-x">
+        <table id="health-table">
+          <thead>
+            <tr><th>class</th><th>id</th><th>safe</th><th>detail</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" class="placeholder">(loading…)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  (function () {
+    var statusEl = document.getElementById("health-status");
+    var summaryEl = document.getElementById("health-summary");
+    var writeEnabled = false;
+    function setStatus(msg) { if (statusEl) statusEl.textContent = msg || ""; }
+
+    function cell(text) {
+      var td = document.createElement("td");
+      td.textContent = text;
+      return td;
+    }
+
+    function render(report) {
+      writeEnabled = !!report.write_enabled;
+      summaryEl.textContent =
+        report.total + " finding(s) — safe=" + report.safe_count +
+        " hard=" + report.hard_count +
+        (writeEnabled ? "" : " (dashboard read-only)");
+      var tbody = document.querySelector("#health-table tbody");
+      tbody.textContent = "";
+      var rows = report.findings || [];
+      if (rows.length === 0) {
+        var tr0 = document.createElement("tr");
+        var td0 = document.createElement("td");
+        td0.colSpan = 4;
+        td0.className = "placeholder";
+        td0.textContent = "(runtime clean — no findings)";
+        tr0.appendChild(td0);
+        tbody.appendChild(tr0);
+        return;
+      }
+      rows.forEach(function (f) {
+        var tr = document.createElement("tr");
+        tr.appendChild(cell(f["class"]));
+        tr.appendChild(cell(f.id));
+        tr.appendChild(cell(f.safe ? "safe" : "hard"));
+        tr.appendChild(cell(f.detail || ""));
+        tbody.appendChild(tr);
+      });
+    }
+
+    function load() {
+      fetch("/api/health/repair").then(function (r) { return r.json(); })
+        .then(function (j) { render(j); })
+        .catch(function (e) { setStatus(String(e)); });
+    }
+
+    function apply(safeOnly) {
+      if (!writeEnabled) { setStatus("dashboard writes disabled"); return; }
+      setStatus("applying…");
+      fetch("/api/health/repair/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ safe_only: safeOnly })
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          setStatus(res.ok
+            ? ("applied " + (res.j.applied ? res.j.applied.length : 0))
+            : (res.j.message || res.j.error || "error"));
+          load();
+        })
+        .catch(function (e) { setStatus(String(e)); });
+    }
+
+    document.getElementById("health-rescan").addEventListener("click", load);
+    document.getElementById("health-apply-safe").addEventListener("click", function () { apply(true); });
+    document.getElementById("health-apply-all").addEventListener("click", function () { apply(false); });
+
+    if (window.AgenticOS && AgenticOS.startRuntimePolling) AgenticOS.startRuntimePolling();
+    load();
+  })();
+</script>
+</body>
+</html>

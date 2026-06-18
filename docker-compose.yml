@@ -1,0 +1,59 @@
+# Agentic OS — run-from-Docker (Wave 17, ADR-0001).
+#
+# The OS runs in this container; the SUT is EXTERNAL (web/API URL + optional
+# DB), never started here — no docker-in-docker. Quick start:
+#
+#     docker compose up
+#
+# then open the dashboard at http://127.0.0.1:8765/. Stop with `docker compose
+# down`. Volume contract: docs/docker-volume-contract.md (#354). Networking &
+# secrets: docs/docker-networking-contract.md (#355).
+
+services:
+  agentic-os:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agentic-os:dev
+    # `serve` = foreground, read-only dashboard (no autonomy). --host 0.0.0.0
+    # makes the published port reachable from the host; --no-autostart keeps the
+    # OS from trying to start a SUT (ADR-0001: the SUT is external). Mount an
+    # online-mode config and run autonomy separately for full operation.
+    command: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-autostart"]
+    # Host loopback only by default — not exposed to the LAN. Override the host
+    # port with AGENTIC_OS_DASHBOARD_PORT (the container always listens on 8765).
+    ports:
+      - "127.0.0.1:${AGENTIC_OS_DASHBOARD_PORT:-8765}:8765"
+    # Linux: resolve host.docker.internal to the host so a SUT running on the
+    # host is reachable. No-op on Docker Desktop, which already provides it.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Optional runtime config / secrets (SUT URLs, DB/credential refs, provider
+    # creds, dashboard token). Refs only — never inline secrets in this file.
+    # Copy .env.example to .env and fill what you need; missing file is fine.
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Input (read-only) + public artifacts (read-write) — see #354.
+      - ./input:/app/input:ro
+      - ./output/reports:/app/reports
+      - ./output/bugs:/app/bugs
+      - ./output/evidence:/app/evidence
+      # Runtime state (state.db + WAL) on a NAMED volume — not a bind mount;
+      # SQLite file locking is unsafe over Docker Desktop file sharing.
+      - agentic-os-runtime:/app/agentic-os-runtime
+      # Operator's live config (optional). Uncomment to override the baked
+      # default; keep paths.* relative (docs/docker-volume-contract.md).
+      # - ./config/agentic-os.yml:/app/config/agentic-os.yml:ro
+    # The dashboard's own /healthz endpoint, probed from inside the container
+    # (curl ships in the image). start_period covers first-run DB bootstrap.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8765/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+volumes:
+  agentic-os-runtime:

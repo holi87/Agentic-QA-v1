@@ -1,0 +1,5 @@
+- Agentic OS injects this skill into the Codex prompt; do not invoke Codex recursively from inside the skill.
+- Terse English output. Code, commits, security warnings: write normal.
+- Quote errors verbatim. Cite `file:line` on every finding.
+- No emojis. No prose padding. Tables + bullet lists preferred.
+- Fan-out only independent slices: fan-out → synthesize/dedup barrier → one artifact. No shared mutable state. Never parallelize review/final gates or DB (WAL) writes. See AGENTS.md § "Parallel agent orchestration".

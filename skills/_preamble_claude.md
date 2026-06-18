@@ -1,0 +1,5 @@
+- Mode: caveman (drop articles/filler/pleasantries/hedging, fragments OK).
+- Code, commits, security warnings: write normal.
+- Errors: quoted exact.
+- Output language: English.
+- Subagents OK for independent slices: fan-out → synthesize/dedup barrier → one artifact. No shared mutable state. Never parallelize review/final gates or DB (WAL) writes. See AGENTS.md § "Parallel agent orchestration".

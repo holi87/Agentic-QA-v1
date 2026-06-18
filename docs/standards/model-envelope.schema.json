@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-os.local/schemas/model-envelope.schema.json",
+  "title": "Agentic OS Model Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["envelope"],
+  "properties": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "provider",
+        "provider_version",
+        "role",
+        "verdict",
+        "reason",
+        "citations",
+        "body",
+        "metadata"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "provider": { "enum": ["claude", "codex", "antigravity", "script"] },
+        "provider_version": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["planner", "implementer", "reviewer", "triager"] },
+        "verdict": { "enum": ["APPROVE", "REJECT", "ABANDONED", null] },
+        "reason": { "type": ["string", "null"] },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["file", "line", "kind"],
+            "properties": {
+              "file": { "type": "string", "minLength": 1 },
+              "line": { "type": "integer", "minimum": 1 },
+              "kind": { "enum": ["finding", "mitigation"] }
+            }
+          }
+        },
+        "body": { "type": "string" },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

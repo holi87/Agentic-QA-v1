@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Skills - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Skills <span id="runtime-badge" class="badge">…</span>
+      <span id="full-auto-indicator" class="full-auto-indicator" data-state="off" aria-live="polite">
+        <span class="full-auto-dot" aria-hidden="true"></span>Full Dashboard-Auto Mode
+      </span>
+    </h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="skills-heading">
+      <header>
+        <h2 id="skills-heading">Available skills</h2>
+        <p class="muted">Toggle per role. Skills inject into prompt before redact + invoke.</p>
+      </header>
+      <div class="card scroll-x">
+        <table id="skills-table">
+          <thead>
+            <tr>
+              <th>id</th>
+              <th>name</th>
+              <th>description</th>
+              <th>source</th>
+              <th>planner</th>
+              <th>implementer</th>
+              <th>reviewer</th>
+              <th>triager</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="8" class="placeholder">(loading…)</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.startFullAutoIndicator && AgenticOS.startFullAutoIndicator();
+  AgenticOS.startSkillsPolling && AgenticOS.startSkillsPolling();
+</script>
+</body>
+</html>

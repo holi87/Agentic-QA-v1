@@ -1,0 +1,218 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  selftest:
+    name: pytest + runner sanity (issue 89)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Collect tests
+        run: python -m pytest --collect-only -q
+      - name: Naming guard
+        run: python -m pytest tests/test_test_suite_naming.py -q
+      - name: Mandatory runner
+        run: ./run-tests.sh
+      - name: Assert reports finalized
+        run: |
+          test -s reports/last-run.json
+          test -s reports/summary.md
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("reports/last-run.json").read_text())
+          assert payload["total"] > 0, payload
+          assert payload["failed"] == 0, payload
+          assert payload["passed"] + payload["skipped"] == payload["total"], payload
+          PY
+      - name: Shell syntax check
+        run: |
+          for f in run-tests.sh scripts/*.sh; do
+            if [[ -f "$f" ]]; then bash -n "$f"; fi
+          done
+      - name: Whitespace check
+        # Issue #190 — must be a blocking gate. `|| true` was masking
+        # the exit code, so trailing whitespace / conflict markers
+        # slipped past CI. Compare against the pull-request base when
+        # available (HEAD~1 alone is wrong for PRs that contain more
+        # than one commit) and exit non-zero on any reported problem.
+        # GITHUB_BASE_REF is supplied by the runner, never user input.
+        run: |
+          set -euo pipefail
+          if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
+            git fetch --no-tags --depth=1 origin "${GITHUB_BASE_REF}"
+            base="origin/${GITHUB_BASE_REF}"
+          elif git rev-parse --verify --quiet HEAD~1 >/dev/null; then
+            base="HEAD~1"
+          else
+            # Root commit (no parent) — compare against the empty tree so
+            # the whole snapshot is checked instead of erroring on HEAD~1.
+            base="$(git hash-object -t tree /dev/null)"
+          fi
+          git diff --check "${base}" HEAD
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentic-os-test-reports
+          path: |
+            reports/
+            build/test-results/test/
+          if-no-files-found: warn
+          retention-days: 14
+
+  screenshots:
+    # Issues #145 / #166: capture PNGs of key dashboard screens AND
+    # compare each one against the committed Linux baseline at
+    # tests/snapshots/dashboard/linux/. Pixel-diff gate fails when more
+    # than `AGENTIC_OS_SCREENSHOTS_DIFF_THRESHOLD` percent of pixels
+    # differ (default 1.0%). PNGs and any *.diff.png overlays are still
+    # uploaded as an artifact so reviewers can inspect regressions.
+    name: dashboard screenshots (issue 145)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Playwright + Pillow live in the `browser` extras group so local
+          # contributors can `pip install -e ".[dev,browser]"` without
+          # copying magic packages from this workflow (issue #179). The
+          # default selftest job stays on `[dev]` and filters out
+          # `-m browser`.
+          python -m pip install -e ".[dev,browser]"
+      - name: Install Playwright browsers
+        run: python -m playwright install --with-deps chromium
+      - name: Capture screenshots + browser-marked tests
+        run: |
+          mkdir -p build/screenshots
+          # Run the screenshot capture job AND any other browser-marked
+          # tests so the Playwright bundle pays for itself. Issue #156
+          # added crawler-browser tests that also need chromium.
+          pytest -m browser \
+            tests/test_dashboard_screenshots.py \
+            tests/test_crawler_browser.py \
+            -q
+      - name: Upload screenshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-screenshots
+          path: build/screenshots/
+          if-no-files-found: error
+          retention-days: 14
+
+  docker-image:
+    # Issue #357 — guard the containerization (Wave 17, ADR-0001). Builds the
+    # OS image (Python + Node.js + Playwright browsers) and smoke-tests it:
+    # `doctor` must report ok, the Node/Playwright toolchain must be present
+    # (and no JDK/Maven — #389), and `docker compose up` boots a healthy
+    # dashboard (#353). Optional GHCR push remains future work.
+    name: docker image build + smoke (issue 357)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build OS image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: agentic-os:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke — doctor reports ok
+        run: |
+          set -euo pipefail
+          out="$(docker run --rm agentic-os:ci doctor)"
+          echo "$out"
+          echo "$out" | grep -qE '^ok: True'
+      - name: Smoke — Node + Playwright toolchain present (no JDK/Maven, #389)
+        run: |
+          docker run --rm --entrypoint bash agentic-os:ci -lc '
+            set -euo pipefail
+            node -v
+            playwright --version
+            test -d "$PLAYWRIGHT_BROWSERS_PATH"
+            ls "$PLAYWRIGHT_BROWSERS_PATH" | grep -q chromium
+            # The Java/Maven toolchain must be gone (ADR-0002 / #389).
+            if command -v java >/dev/null 2>&1; then echo "java must not be present"; exit 1; fi
+            if command -v mvn  >/dev/null 2>&1; then echo "mvn must not be present"; exit 1; fi
+          '
+      - name: Smoke — docker compose up boots a healthy dashboard (issue 353)
+        run: |
+          set -euo pipefail
+          # Reuse the image built above instead of a second heavy build.
+          docker tag agentic-os:ci agentic-os:dev
+          # On Linux the bind-mounted output dirs keep host ownership; the
+          # container runs as uid 10001, so make the dirs writable by it first
+          # (the documented operator step in docs/docker-volume-contract.md).
+          mkdir -p output/reports output/bugs output/evidence input
+          sudo chown -R 10001:10001 output input
+          docker compose up -d --no-build --wait --wait-timeout 120
+          # The dashboard answers /healthz on the published host port.
+          curl -fsS http://127.0.0.1:8765/healthz | grep -q '"ok"'
+      - name: Smoke — output volume round-trips to the host (issue 354)
+        run: |
+          set -euo pipefail
+          # A write inside the container (uid 10001) must land on the host
+          # output bind mount — the #354 volume contract, on Linux.
+          docker compose exec -T agentic-os python -c \
+            "from pathlib import Path; [Path(f'/app/{d}/_ci_probe.txt').write_text('ok') for d in ('reports','bugs','evidence')]"
+          for d in reports bugs evidence; do
+            test -f "output/$d/_ci_probe.txt" || { echo "missing output/$d/_ci_probe.txt"; exit 1; }
+          done
+      - name: Smoke — container reaches the host via host.docker.internal (issue 355)
+        run: |
+          set -euo pipefail
+          # Serve a trivial endpoint on the runner host; the container must
+          # reach it through host.docker.internal (extra_hosts host-gateway on
+          # Linux) — the #355 host-SUT reachability contract.
+          python3 -m http.server 18099 --bind 0.0.0.0 &
+          SRV=$!
+          trap 'kill "$SRV" 2>/dev/null || true' EXIT
+          sleep 2
+          docker compose exec -T agentic-os python -c \
+            "import urllib.request,sys; r=urllib.request.urlopen('http://host.docker.internal:18099/',timeout=10); sys.exit(0 if r.status==200 else 1)"
+        # Always tear down cleanly (verifies `down` works, frees the volume).
+      - name: Compose down (cleanup)
+        if: always()
+        run: docker compose down -v

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Task detail - Agentic OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <h1>Task <code id="task-id">?</code>
+      <span id="task-status-badge" class="badge">…</span>
+      <span class="muted">runtime <span id="runtime-badge" class="badge">…</span></span>
+    </h1>
+    <!-- DASHBOARD_NAV -->
+  </header>
+
+  <main>
+    <section aria-labelledby="timeline-heading">
+      <header><h2 id="timeline-heading">Timeline</h2></header>
+      <div class="card">
+        <ol class="timeline" id="task-timeline" aria-label="Task progression">
+          <li data-step="analyze">       <span class="step-name">Analyze</span><span class="muted">SUT map</span></li>
+          <li data-step="plan">           <span class="step-name">Plan</span><span class="muted">Test plan</span></li>
+          <li data-step="implement-tests"><span class="step-name">Generate</span><span class="muted">Executable patch</span></li>
+          <li data-step="review-gate">    <span class="step-name">Review</span><span class="muted">Gate verdict</span></li>
+          <li data-step="apply-patch">    <span class="step-name">Apply</span><span class="muted">Patch on disk</span></li>
+          <li data-step="run-tests">      <span class="step-name">Run tests</span><span class="muted">Reports</span></li>
+          <li data-step="final-gate">     <span class="step-name">Final gate</span><span class="muted">Sign-off</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section aria-labelledby="meta-heading">
+      <header><h2 id="meta-heading">Meta</h2></header>
+      <div class="card">
+        <dl class="meta" id="meta">
+          <dt>id</dt><dd><span class="skeleton" aria-hidden="true"></span></dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- Issue #330 — idempotent-no-op signal. Hidden until the latest
+         `work_item.implement_idempotent_noop` event for this WI is the
+         most recent generation signal (no newer `work_item.patch_generated`
+         event). Renders the skipped surfaces so the operator can confirm
+         which assertions collapsed the run. -->
+    <section id="section-coverage-state" aria-labelledby="coverage-state-heading" hidden>
+      <header><h2 id="coverage-state-heading">Coverage</h2></header>
+      <div class="card">
+        <p id="coverage-state-banner" class="msg" role="status">
+          <span class="badge badge-state-done">covered</span>
+          <span id="coverage-state-text">All requested surfaces are already covered by existing specs — nothing to generate.</span>
+        </p>
+        <details id="coverage-state-skipped-wrap">
+          <summary>Skipped surfaces (<span id="coverage-state-skipped-count">0</span>)</summary>
+          <ul id="coverage-state-skipped" class="artifact-list">
+            <li class="placeholder">(none)</li>
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="actions-heading">
+      <header><h2 id="actions-heading">Actions</h2></header>
+      <div class="card actions-card">
+        <p id="actions-write-warning" class="msg muted">Checking write gate…</p>
+        <div class="action-buttons" role="toolbar" aria-label="Task actions">
+          <button id="action-analyze"          type="button" disabled aria-label="Analyze SUT">Analyze SUT</button>
+          <button id="action-plan"             type="button" disabled aria-label="Create test plan">Create test plan</button>
+          <button id="action-implement-tests"  type="button" disabled aria-label="Generate tests">Generate tests</button>
+          <button id="action-review-gate"      type="button" disabled aria-label="Review gate">Review gate</button>
+          <button id="action-apply-patch"      type="button" disabled aria-label="Apply patch">Apply patch</button>
+          <button id="action-run-tests"        type="button" disabled aria-label="Run tests">Run tests</button>
+          <button id="action-final-gate"       type="button" disabled aria-label="Final gate">Final gate</button>
+        </div>
+        <div id="actions-msg" class="msg muted" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="last-run-heading">
+      <header><h2 id="last-run-heading">Last run</h2></header>
+      <div class="card">
+        <dl class="meta">
+          <dt>Outcome</dt>
+          <dd id="last-action-outcome"><span class="muted">no actions yet</span></dd>
+          <dt>Exit code</dt>
+          <dd id="last-action-exit">–</dd>
+          <dt>Failure kind</dt>
+          <dd id="last-action-failure">–</dd>
+          <dt>Run id</dt>
+          <dd id="last-action-run">–</dd>
+          <dt>Manifest</dt>
+          <dd id="last-action-manifest">–</dd>
+          <dt>Reports</dt>
+          <dd id="last-action-reports">–</dd>
+          <dt>Bugs opened</dt>
+          <dd id="last-action-bugs">–</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section aria-labelledby="candidates-heading">
+      <header><h2 id="candidates-heading">Candidate review</h2></header>
+      <div class="card">
+        <div class="toolbar">
+          <p id="candidate-msg" class="msg muted">Run analysis and plan to load candidates.</p>
+          <div class="toolbar-actions">
+            <button id="approve-selected-candidates" type="button" disabled>Approve selected</button>
+            <button id="reject-selected-candidates" type="button" disabled>Reject selected</button>
+            <button id="approve-all-candidates" type="button" disabled>Approve all runnable</button>
+            <span id="bulk-count" class="muted">0 selected</span>
+          </div>
+        </div>
+        <details id="bulk-defaults" class="bulk-defaults">
+          <summary>Bulk defaults (applied to selected on Approve / Reject)</summary>
+          <div class="bulk-grid">
+            <label>
+              Expected assertion
+              <textarea id="bulk-assertion" rows="2" placeholder="Overrides per-row assertion when set"></textarea>
+            </label>
+            <label>
+              Required test data
+              <textarea id="bulk-data" rows="2" placeholder="Overrides per-row test data when set"></textarea>
+            </label>
+            <label>
+              Cleanup strategy
+              <textarea id="bulk-cleanup" rows="2" placeholder="Overrides per-row cleanup when set"></textarea>
+            </label>
+          </div>
+        </details>
+        <div class="scroll-x">
+          <table id="task-candidates">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all-candidates" aria-label="Select all candidates" /></th>
+                <th>candidate</th>
+                <th>decision</th>
+                <th>type</th>
+                <th>assertion (editable)</th>
+                <th>action</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="6" class="placeholder">(no candidates yet)</td></tr></tbody>
+          </table>
+        </div>
+        <details id="candidate-summary" class="candidate-summary" hidden>
+          <summary>Last bulk action — outcomes per candidate</summary>
+          <ul id="candidate-summary-list" class="candidate-summary-list"></ul>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="generated-tests-heading">
+      <header>
+        <h2 id="generated-tests-heading">Generated tests review</h2>
+      </header>
+      <div class="card">
+        <p id="generated-tests-msg" class="msg muted">
+          Run <strong>Generate tests</strong> to populate this view. Files are
+          listed by their actual on-disk paths so edits land where the runner
+          looks for them.
+        </p>
+        <div class="toolbar">
+          <button id="generated-tests-refresh" type="button">Refresh</button>
+          <span id="generated-tests-count" class="muted">0 files</span>
+        </div>
+        <ul id="generated-tests-list" class="generated-tests-list" aria-live="polite"></ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="patch-heading">
+      <header><h2 id="patch-heading">Patch &amp; gate</h2></header>
+      <div class="card">
+        <dl class="meta">
+          <dt>Latest patch</dt>
+          <dd id="patch-state">(none)</dd>
+          <dt>Latest review gate</dt>
+          <dd id="gate-state">(none)</dd>
+          <dt>Generated specs</dt>
+          <dd id="generated-specs-summary">(none)</dd>
+        </dl>
+        <p class="msg muted">
+          Patches are never applied automatically. Use <strong>Apply patch</strong>
+          after an approved review gate, or run the CLI equivalent:
+          <code>scripts/agentic-os.sh run review-gate --apply-patch &lt;patch&gt; --work-item &lt;id&gt;</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Issue #247 — Verification tab: reviewer/triager events for this WI -->
+    <section aria-labelledby="wi-verif-heading">
+      <header><h2 id="wi-verif-heading">Verification</h2></header>
+      <div class="card">
+        <ol id="wi-verif-timeline" class="step-timeline">
+          <li class="placeholder">(no reviewer / triager events for this work item)</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Issue #242 — per-work-item SUT branch + autocommit surface -->
+    <section aria-labelledby="wi-git-heading">
+      <header><h2 id="wi-git-heading">SUT branch <span class="muted" id="wi-git-state">…</span></h2></header>
+      <div class="card">
+        <dl class="meta">
+          <dt>branch</dt><dd id="wi-git-branch">…</dd>
+        </dl>
+        <div class="wi-git-actions">
+          <button id="wi-git-view-diff" type="button">View diff</button>
+        </div>
+        <details class="wi-git-diff" id="wi-git-diff-wrap" hidden>
+          <summary>branch diff vs base</summary>
+          <pre id="wi-git-diff-body">(click View diff)</pre>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="generated-specs-heading">
+      <header><h2 id="generated-specs-heading">Generated specs</h2></header>
+      <div class="card">
+        <ul id="generated-specs-list" class="artifact-list">
+          <li class="placeholder">(no generated specs yet)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="patches-detail-heading">
+      <header><h2 id="patches-detail-heading">Blocking patches</h2></header>
+      <div class="card patches-card patches-detail-card">
+        <div class="scroll-x">
+          <table id="task-patches">
+            <thead><tr><th>patch</th><th>state</th><th>created</th><th>action</th></tr></thead>
+            <tbody><tr><td colspan="4" class="placeholder">(loading…)</td></tr></tbody>
+          </table>
+        </div>
+        <p class="msg muted">
+          Abandoning a patch keeps the row in <code>work_item_artifacts</code>,
+          writes a gate artifact with <code>verdict: ABANDONED</code>, and inserts
+          an operator decision row. Final gate then skips this patch.
+        </p>
+      </div>
+    </section>
+
+    <dialog id="abandon-dialog" class="modal">
+      <form method="dialog" class="modal-form">
+        <h3>Abandon patch</h3>
+        <p class="muted" id="abandon-patch-label">…</p>
+        <label>Reason
+          <textarea id="abandon-reason" rows="3" required minlength="6"></textarea>
+        </label>
+        <menu>
+          <button type="button" id="abandon-cancel">Cancel</button>
+          <button type="submit" id="abandon-confirm" class="btn-danger">Abandon</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <section id="section-events" aria-labelledby="events-heading">
+      <header>
+        <h2 id="events-heading">Task events <span class="muted" id="task-ev-mode">(stream)</span></h2>
+      </header>
+      <div id="task-events" class="events" role="log" aria-live="polite"></div>
+    </section>
+
+    <section aria-labelledby="spec-heading">
+      <header><h2 id="spec-heading">Spec</h2></header>
+      <pre id="spec" class="block">(loading…)</pre>
+    </section>
+
+    <section aria-labelledby="artifacts-heading">
+      <header><h2 id="artifacts-heading">Artifacts</h2></header>
+      <div id="artifact-groups" class="artifact-group">
+        <p class="placeholder">(no artifacts yet)</p>
+      </div>
+    </section>
+  </main>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  AgenticOS.startRuntimePolling();
+  AgenticOS.startTaskDetailPolling();
+  AgenticOS.startTaskEvents();
+  AgenticOS.startTaskPatchPolling && AgenticOS.startTaskPatchPolling();
+  AgenticOS.wireWorkItemGit && AgenticOS.wireWorkItemGit();
+  AgenticOS.wireWorkItemVerification && AgenticOS.wireWorkItemVerification();
+</script>
+</body>
+</html>

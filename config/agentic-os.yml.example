@@ -1,0 +1,287 @@
+runtime:
+  root: agentic-os-runtime
+  timezone: Europe/Warsaw
+  max_parallel_tasks: 4
+  heartbeat_seconds: 20
+  lease_ttl_seconds: 60
+  stale_lease_seconds: 90
+  shutdown_grace_seconds: 5
+  timeouts:
+    default_seconds: 1800
+    docker_seconds: 240
+    test_seconds: 3600
+    model_seconds: 1800
+    report_seconds: 300
+
+sut:
+  root: .
+  # mode controls how the SUT is reached:
+  #   local  — docker-compose lifecycle (Compose keys below are REQUIRED)
+  #   online — external SUT: the OS connects over web/api URL(s) (+ optional
+  #            db) and never starts it. The Compose-lifecycle keys below
+  #            (compose_file, compose_project_name, autostart,
+  #            install_shim_allowed) are OPTIONAL and may be dropped entirely.
+  #            healthcheck + test_runner stay required (the OS still probes the
+  #            SUT and runs the generated tests). At least one enabled web/api
+  #            endpoint with a url is required.
+  #            See docs/adr/ADR-0001-os-in-docker-sut-external.md and the
+  #            external-SUT block at the bottom of this section.
+  mode: local
+  compose_file: docker-compose.yml   # null/omit when mode=online
+  compose_project_name: agentic-os-sut
+  autostart: true
+  healthcheck:
+    command: ["curl", "-fsS", "http://127.0.0.1:3000/health"]
+    timeout_seconds: 30
+    retries: 10
+  test_runner: ./run-tests.sh
+  install_shim_allowed: false
+  # Endpoint declaration — controls test generation scope.
+  # If web.enabled=false the implementer skips UI specs; same for api.
+  web:
+    enabled: true
+    url: http://127.0.0.1:3000
+  api:
+    enabled: true
+    url: http://127.0.0.1:3000/api
+  # --- STEP2 optional v2 fields (backwards compatible) ---
+  # kind: web_api          # web | api | web_api
+  # openapi:
+  #   sources:
+  #     - type: file       # file | url
+  #       value: docs/openapi.yaml
+  # docs:
+  #   sources:
+  #     - type: file
+  #       value: docs/requirements.md
+  # credentials:
+  #   ref_type: env        # env | file | none (value never returned in plain by /api/config)
+  #   value: TEST_USER_TOKEN
+  # db:                    # external SUT database — reference only, never an inline secret.
+  #   ref_type: env        # env | file | none. `value` names the env var / file that
+  #   value: SUT_DB_PASSWORD    # holds the full DSN (driver://user:pass@host:port/db); host,
+  #                        # port and user live inside the DSN, not as separate keys.
+  #                        # Under Docker a host DB uses host.docker.internal in the DSN.
+  #                        # Name secret-bearing vars with a redaction keyword
+  #                        # (PASSWORD/SECRET/TOKEN/CREDENTIAL) — a bare DATABASE_URL is
+  #                        # not auto-redacted yet. See docs/docker-networking-contract.md (#385).
+  # tests_dir: tests
+  # tests:
+  #   api:
+  #     runner: playwright-ts   # playwright-ts | pytest-httpx
+  #   ui:
+  #     runner: playwright-ts   # playwright-ts
+  #
+  # --- External SUT (mode: online) — minimal, no Compose keys ---
+  # Migration: an existing local config can switch to an external SUT by
+  # setting mode: online and pointing web/api at the running SUT; the Compose
+  # keys above become optional and may be deleted. Minimal external sut:
+  #
+  # sut:
+  #   root: .
+  #   mode: online
+  #   healthcheck:
+  #     command: ["curl", "-fsS", "https://staging.example.com/health"]
+  #     timeout_seconds: 30
+  #     retries: 10
+  #   test_runner: ./run-tests.sh
+  #   web:
+  #     enabled: true
+  #     url: https://staging.example.com
+  #   api:
+  #     enabled: true
+  #     url: https://staging.example.com/api
+  #   db:                      # optional
+  #     ref_type: env
+  #     value: SUT_DB_PASSWORD
+  #
+  # --- Reachability when the OS runs in Docker ---
+  # From inside the container 127.0.0.1/localhost is the container, not the
+  # host. For a SUT on the host, point healthcheck + web/api URLs (and any DSN
+  # host) at host.docker.internal; for a remote/staging SUT use its public URL.
+  # On Linux, Compose adds extra_hosts host.docker.internal:host-gateway (#353).
+  # Full contract + worked examples: docs/docker-networking-contract.md (#355).
+
+models:
+  # Issue #236 — Claude is the primary for every role (cheap variant per role),
+  # codex stays as reviewer primary, antigravity (`agy`) moves to the last
+  # fallback slot for every role. Failover handled by issue #235 plumbing.
+  planner:
+    provider: claude
+    command: ["claude", "--model", "opus"]
+    role: opus
+    fallback:
+      - { provider: codex, command: ["codex"], role: codex }
+      - { provider: antigravity, command: ["agy", "--model", "gemini-3.1-pro-high"], role: gemini }
+  implementer:
+    provider: claude
+    command: ["claude", "--model", "sonnet"]
+    role: sonnet
+    fallback:
+      - { provider: codex, command: ["codex"], role: codex }
+      - { provider: antigravity, command: ["agy", "--model", "gemini-3.1-pro-high"], role: gemini }
+  reviewer:
+    provider: codex
+    command: ["codex"]
+    role: codex
+    fallback:
+      - { provider: claude, command: ["claude", "--model", "sonnet"], role: sonnet }
+      - { provider: antigravity, command: ["agy", "--model", "gemini-3.1-pro-high"], role: gemini }
+  # Triager assesses bug severity + priority. Short structured classification,
+  # not heavy reasoning — cheap Claude variant fits. auto_fire: true so the
+  # autonomous loop (#232) does not require operator intervention.
+  triager:
+    provider: claude
+    command: ["claude", "--model", "haiku"]
+    role: haiku
+    auto_fire: true
+    fallback:
+      - { provider: codex, command: ["codex"], role: codex }
+      - { provider: antigravity, command: ["agy", "--model", "gemini-3.1-pro-high"], role: gemini }
+
+budgets:
+  session:
+    max_tokens: 1000000
+    max_usd: 50.0
+  per_role:
+    planner: {max_tokens: 200000}
+    implementer: {max_tokens: 500000}
+    reviewer: {max_tokens: 150000}
+    triager: {max_tokens: 150000}
+  per_work_item:
+    max_tokens: 300000
+  fail_mode: abort
+
+# Issue #245 — step.* event taxonomy. Throttle sampled subprocess stdout
+# emissions on step.progress. 0 disables progress events entirely; the
+# raw subprocess log on disk is the source of truth.
+events:
+  step_progress_throttle: 5
+
+# Issue #293 — injected agent prompt context. Optional; defaults shown.
+#   architecture_enabled       — prepend the compressed docs/architecture.md
+#                                summary to every model prompt.
+#   architecture_budget_tokens — cap for the injected block; shares the
+#                                prompt-context budget with #287/#289.
+#   learnings_enabled          — issue #287: prepend distilled cross-run
+#                                learnings (flaky / coverage gaps / repeated
+#                                reject clusters) to planner + implementer
+#                                prompts. Hints only; gates still decide.
+#   learnings_budget_tokens    — cap for the injected learnings block.
+#   memory_enabled             — issue #289: prepend the active project's RAG
+#                                memory (per-project semantic recall of prior
+#                                sessions) to planner + implementer prompts.
+#   memory_budget_tokens       — cap for the injected prior-context block.
+#   memory_top_k               — how many ranked snippets to recall per prompt.
+prompt_context:
+  architecture_enabled: true
+  architecture_budget_tokens: 600
+  learnings_enabled: true
+  learnings_budget_tokens: 400
+  memory_enabled: true
+  memory_budget_tokens: 500
+  memory_top_k: 5
+
+# Issue #288 — addressable projects over the flat work-item list. Optional.
+# Omit the whole block to stay single-SUT: work items resolve to the always
+# present `default` project (its sut_root mirrors sut.root above). Register
+# more with `agentic-os project register <name> --sut-root <path>` and point
+# `active` at one to scope new work items there. Prerequisite for the
+# per-project RAG memory in #289.
+# project:
+#   active: default
+
+# Phase 3 — autonomy feature flags. All default false; flip on per role
+# once the operator has audited the change.
+#   coverage_floor      — UI/API generators emit console/network/a11y/link
+#                         and OWASP companion blocks (#230, #231).
+#   coverage_architect  — planner autonomously proposes generate_now for
+#                         read-only candidates (#229).
+#   triage_batch        — triager auto-classifies failures via fingerprint
+#                         match instead of per-failure operator prompt (#232).
+autonomy:
+  coverage_floor: false
+  coverage_architect: false
+  triage_batch: false
+  # Issue #269 — archive event NDJSON older than this many days on dashboard
+  # startup (DB session index rows are kept). Default 30.
+  # session_retention_days: 30
+  # Issue #270 — capture per-invocation reasoning transcript. One of:
+  # always | on_block | never. Default on_block (capture only on failure).
+  # `never` is zero-overhead. Extended thinking adds tokens.
+  # transcript_capture: on_block
+  # Issue #238 — exploratory baseline. When the queue is empty (and preflight
+  # is green), autonomously discover→generate→run→report a read-only safe
+  # bucket instead of idling. Off by default. Fires at most once per cooldown.
+  # exploratory_baseline: false
+  # exploratory_crawl_depth: 2
+  # exploratory_cooldown_seconds: 3600
+  # Issue #290 — opt-in bounded task synthesis. When the queue is empty,
+  # synthesize work items from real signals (failing tests in
+  # reports/last-run.json + coverage_gap learnings) so an unattended run
+  # generates its own backlog instead of idling. Advisory: synthesized
+  # items enter the normal pipeline; gates still decide. Off by default.
+  # task_synthesis: false
+  # task_synthesis_max_per_cycle: 3   # cap per idle cycle, minimum 1
+
+# Issue #268 — push notifications when the loop blocks / completes / hits a
+# budget cap / fails over a provider. Optional; off by default. Channels are
+# opt-in and only fire for the event kinds listed under `events`. Allowed
+# event kinds: blocked, budget_exceeded, session_completed,
+# provider_chain_exhausted, failover.
+# notifications:
+#   enabled: true
+#   dedup_window_seconds: 300        # collapse the same kind+work_item within window
+#   channels:
+#     webhook:
+#       url: https://hooks.slack.com/services/...
+#       events: [blocked, budget_exceeded, session_completed, provider_chain_exhausted]
+#     desktop:
+#       enabled: true                # osascript (macOS) / notify-send (Linux)
+#       events: [blocked, session_completed]
+#     sound:
+#       enabled: true
+#       events: [blocked]
+#       path: ~/sounds/alert.wav     # optional; default system sound
+
+dashboard:
+  host: 127.0.0.1
+  port: 8765
+  enable_write_endpoints: false
+
+# Artifact paths, relative to the repo root. Keep them relative: when the OS
+# runs from Docker these resolve to /app/reports|bugs|evidence, which is where
+# the output bind mounts attach. Do NOT set absolute paths here in a mounted
+# config — see docs/docker-volume-contract.md (issue #354).
+paths:
+  reports: reports
+  bugs: bugs
+  evidence: evidence
+  prompts: config/prompts
+
+reports:
+  copy_reports_script: scripts/copy-reports.sh
+  extract_last_run_script: scripts/extract-last-run.sh
+  build_summary_script: scripts/build-summary.sh
+  require_reports_on_failure: true
+
+gates:
+  known_bugs_fail_exit: true
+  assertion_changes_require_decision: true
+  exact_spec_failure_opens_bug: true
+  require_functional_area_tag: true
+  require_lifecycle_tag: true
+  infrastructure_exit_code: 2
+
+# Issue #241 — declarative git: bootstrap. Optional. Default behaviour
+# (no `git:` block) keeps the runtime free of git side-effects.
+# Operator runs `./scripts/agentic-os.sh git ensure` to apply changes;
+# the autonomy preflight pass invokes it once per session.
+#
+# git:
+#   enabled: true                  # default false; opt-in
+#   auto_init: true                # if no .git, run init + initial commit
+#   origin: git@github.com:owner/sut.git    # passes validate_remote_url()
+#   origin_branch: main            # default main
+#   auto_fetch: true               # fetch on every ensure call
+#   auto_publish: false            # NEVER default true — push is irreversible

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$title</title>
+<style>
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  max-width: 50rem; margin: 2rem auto; padding: 0 1rem; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; margin-top: 2rem;
+  border-bottom: 1px solid #8884; padding-bottom: .2rem; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+pre { background: #8881; padding: .8rem 1rem; border-radius: .4rem;
+  overflow-x: auto; }
+code { background: #8882; padding: .1rem .3rem; border-radius: .2rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #8884; padding: .4rem .6rem; text-align: left; }
+.pass { color: #2a7; font-weight: 600; } .fail { color: #d44; font-weight: 600; }
+footer { margin-top: 3rem; font-size: .85rem; opacity: .7; }
+</style>
+</head>
+<body>
+<h1>$title</h1>
+<p>Ten zestaw testów (Playwright + TypeScript) jest samowystarczalny — uruchamiasz
+go na dowolnej maszynie z <strong>Node.js (LTS)</strong>, bez Agentic OS,
+bez Dockera, bez Javy/Mavena.</p>
+
+<h2>1. Wymagania</h2>
+<ul>
+  <li><strong>Node.js LTS</strong> (sprawdź: <code>node -v</code>).</li>
+  <li>Dostęp sieciowy do testowanego systemu (SUT) pod adresami z sekcji 2.</li>
+</ul>
+
+<h2>2. Zmienne środowiskowe (kontrakt env)</h2>
+<p>SUT wstrzykujesz przez środowisko — ten sam zestaw działa w obu trybach
+(in-container oraz standalone), zmieniasz tylko wartości. Szczegóły:
+<code>docs/two-mode-execution-contract.md</code>.</p>
+<table>
+  <tr><th>Zmienna</th><th>Do czego</th><th>Przykład</th></tr>
+  <tr><td><code>API_BASE_URL</code></td><td>base URL dla testów API</td>
+      <td><code>$api_base_url</code></td></tr>
+  <tr><td><code>UI_BASE_URL</code></td><td>base URL dla testów UI</td>
+      <td><code>$ui_base_url</code></td></tr>
+  <tr><td><code>$credentials_env</code></td>
+      <td>token (tylko gdy testy wymagają auth)</td><td>—</td></tr>
+</table>
+
+<h2>3. Uruchomienie</h2>
+<pre>export API_BASE_URL=$api_base_url
+export UI_BASE_URL=$ui_base_url
+# export $credentials_env=...    # tylko gdy potrzebny auth
+$runner</pre>
+<p><code>$runner</code> instaluje zależności (<code>npm ci</code>), uruchamia
+bramy statyczne (ESLint + <code>tsc --noEmit</code>), po czym wykonuje testy.
+Możesz zawęzić zakres, np. <code>$runner api/</code> albo
+<code>$runner --grep @smoke</code>.</p>
+
+<h2>4. Co oznacza wynik</h2>
+<ul>
+  <li><span class="pass">PASS</span> — kod wyjścia <code>0</code>: wszystkie
+      testy i bramy przeszły.</li>
+  <li><span class="fail">FAIL</span> — kod wyjścia <code>1</code>: błąd testu
+      lub naruszenie bramy lint/typów (build zatrzymany przed testami).</li>
+</ul>
+
+<h2>5. Wyniki, dowody i błędy</h2>
+<p>Otwórz ten przewodnik z katalogu wyników (output) — linki poniżej są
+względne, więc prowadzą prosto do raportu, dowodów i błędów, bez zaglądania w
+wewnętrzne ścieżki runtime'u.</p>
+<ul>
+  <li><a href="$report_link">Raport HTML</a> — wynik przebiegu
+      (lokalnie po standalone: <code>npx playwright show-report</code>).</li>
+  <li><a href="$reports_dir">$reports_dir</a> — JUnit XML + raport HTML
+      (kopie operatorskie handoffu).</li>
+  <li><a href="$evidence_dir">$evidence_dir</a> — trace'y, zrzuty ekranu, wideo
+      (lokalnie świeże w <code>test-results/</code>).</li>
+  <li><a href="$bugs_dir">$bugs_dir</a> — pliki <code>BUG-NNN-*.md</code>.</li>
+</ul>
+<p>Plik <code>BUG-NNN-*.md</code> opisuje jeden znaleziony błąd: kroki
+reprodukcji, oczekiwane vs. faktyczne zachowanie i powiązane evidence.</p>
+
+<footer>Wygenerowane przez Agentic OS (Wave 17, EPIC D). Artefakty wrażliwe
+(trace'y/HAR mogą zawierać nagłówek Authorization) trzymaj w obszarze evidence,
+nie publikuj surowych.</footer>
+</body>
+</html>

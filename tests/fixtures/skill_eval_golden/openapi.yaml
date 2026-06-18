@@ -1,0 +1,146 @@
+openapi: 3.0.3
+info:
+  title: Identity API (golden eval fixture)
+  version: "1.0.0"
+  description: |
+    Auth + user management surface used by tests/test_skill_eval_golden.py
+    to assert the deterministic candidate generator produces sensible
+    breadth and depth from a non-trivial spec (issue #140).
+servers:
+  - url: https://api.example.test
+paths:
+  /auth/login:
+    post:
+      summary: Exchange credentials for a session token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200': { description: OK }
+        '401': { description: Invalid credentials }
+        '429': { description: Throttled }
+  /auth/refresh:
+    post:
+      summary: Refresh a session token.
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK }
+        '401': { description: Token rejected }
+  /auth/logout:
+    post:
+      summary: Invalidate the current session token.
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: Logged out }
+        '401': { description: Token rejected }
+  /users:
+    get:
+      summary: List users (paginated).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200': { description: OK }
+        '401': { description: Token rejected }
+    post:
+      summary: Create a new user.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 12 }
+                role: { type: string, enum: [admin, member] }
+      responses:
+        '201': { description: Created }
+        '400': { description: Validation error }
+        '401': { description: Token rejected }
+        '409': { description: Email already in use }
+  /users/{id}:
+    get:
+      summary: Get a single user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: OK }
+        '401': { description: Token rejected }
+        '404': { description: Not found }
+    put:
+      summary: Update a user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [admin, member] }
+      responses:
+        '200': { description: OK }
+        '400': { description: Validation error }
+        '401': { description: Token rejected }
+        '404': { description: Not found }
+    delete:
+      summary: Delete a user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+        '401': { description: Token rejected }
+        '404': { description: Not found }
+  /users/{id}/password-reset:
+    post:
+      summary: Send a password reset email for the user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202': { description: Accepted }
+        '401': { description: Token rejected }
+        '404': { description: Not found }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,0 +1,47 @@
+# Build-context excludes for the OS image (#353). Keep what the Dockerfile
+# COPYs (pyproject.toml, README.md, run-tests.sh, scripts/, docs/, config/);
+# drop everything that only bloats the context or leaks local state.
+
+# VCS + tooling
+.git
+.gitignore
+.github
+
+# Python / virtualenv / caches
+.venv
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Agentic OS runtime state + public artifacts (mounted at runtime, never baked)
+agentic-os-runtime/
+.agentic-os/
+reports/
+bugs/
+evidence/
+build/
+
+# Docker volume host dirs (mounted at runtime — see docs/docker-volume-contract.md)
+input/
+output/
+
+# Operator's live/local config + secrets (never bake into the image)
+.qualitycat/
+.env
+.env.*
+
+# Node / Playwright / browser caches
+node_modules
+.playwright-mcp/
+
+# Editor / OS noise + local scratch
+.DS_Store
+*.log
+tmp/
+instrukcja-pl.html
+tests/exploratory/
+
+# The image does not run the Python test suite
+tests/
